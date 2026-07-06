@@ -1,0 +1,382 @@
+/* Obsidian Browser Plugin Styles */
+
+.obsidian-browser-view-container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	padding: 0 !important;
+	overflow: hidden;
+}
+
+.obsidian-browser-root {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	background: var(--background-primary);
+}
+
+/* Toolbar */
+.obsidian-browser-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 6px 8px;
+	background: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+.obsidian-browser-nav-group,
+.obsidian-browser-action-group {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.obsidian-browser-action-group {
+	margin-left: auto;
+}
+
+.obsidian-browser-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	transition: background 0.15s, color 0.15s;
+}
+
+.obsidian-browser-btn:hover:not(:disabled) {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.obsidian-browser-btn:disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
+}
+
+.obsidian-browser-btn.is-active {
+	color: var(--text-accent);
+}
+
+.obsidian-browser-btn svg {
+	width: 16px;
+	height: 16px;
+}
+
+/* URL Bar */
+.obsidian-browser-url-bar {
+	display: flex;
+	align-items: center;
+	flex: 1;
+	margin: 0 8px;
+	position: relative;
+}
+
+.obsidian-browser-url-input {
+	flex: 1;
+	height: 28px;
+	padding: 0 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: 13px;
+	font-family: var(--font-monospace);
+	outline: none;
+}
+
+.obsidian-browser-url-input:focus {
+	border-color: var(--interactive-accent);
+}
+
+.obsidian-browser-loading-indicator {
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	height: 2px;
+	width: 100%;
+	background: linear-gradient(
+		90deg,
+		transparent,
+		var(--interactive-accent),
+		transparent
+	);
+	animation: obsidian-browser-loading 1.2s infinite;
+	border-radius: 0 0 6px 6px;
+}
+
+@keyframes obsidian-browser-loading {
+	0% { transform: translateX(-100%); }
+	100% { transform: translateX(100%); }
+}
+
+.obsidian-browser-toolbar.is-loading .obsidian-browser-url-input {
+	border-color: var(--interactive-accent);
+}
+
+/* Tab Bar */
+.obsidian-browser-tab-bar {
+	display: flex;
+	align-items: center;
+	background: var(--background-secondary-alt);
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+	min-height: 32px;
+}
+
+.obsidian-browser-tab-list {
+	display: flex;
+	flex: 1;
+	overflow-x: auto;
+	scrollbar-width: thin;
+}
+
+.obsidian-browser-tab {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 8px 4px 10px;
+	max-width: 200px;
+	min-width: 100px;
+	border-right: 1px solid var(--background-modifier-border);
+	cursor: pointer;
+	font-size: 12px;
+	color: var(--text-muted);
+	transition: background 0.15s;
+	flex-shrink: 0;
+}
+
+.obsidian-browser-tab:hover {
+	background: var(--background-modifier-hover);
+}
+
+.obsidian-browser-tab.is-active {
+	background: var(--background-primary);
+	color: var(--text-normal);
+	border-bottom: 2px solid var(--interactive-accent);
+}
+
+.obsidian-browser-tab.is-loading .obsidian-browser-tab-title {
+	opacity: 0.6;
+}
+
+.obsidian-browser-tab-favicon {
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+}
+
+.obsidian-browser-tab-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+.obsidian-browser-tab-title {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	flex: 1;
+}
+
+.obsidian-browser-tab-close {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	padding: 0;
+	border: none;
+	border-radius: 3px;
+	background: transparent;
+	color: var(--text-faint);
+	cursor: pointer;
+	flex-shrink: 0;
+	opacity: 0;
+	transition: opacity 0.15s;
+}
+
+.obsidian-browser-tab:hover .obsidian-browser-tab-close,
+.obsidian-browser-tab.is-active .obsidian-browser-tab-close {
+	opacity: 1;
+}
+
+.obsidian-browser-tab-close:hover {
+	background: var(--background-modifier-error-hover);
+	color: var(--text-error);
+}
+
+.obsidian-browser-tab-close svg {
+	width: 12px;
+	height: 12px;
+}
+
+.obsidian-browser-tab-new {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	margin: 0 4px;
+	padding: 0;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.obsidian-browser-tab-new:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.obsidian-browser-tab-new svg {
+	width: 14px;
+	height: 14px;
+}
+
+/* Content Area */
+.obsidian-browser-content {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	position: relative;
+	min-height: 0;
+}
+
+.obsidian-browser-webview,
+.obsidian-browser-iframe {
+	flex: 1 1 auto;
+	width: 100%;
+	height: 100%;
+	min-height: 0;
+	border: none;
+}
+
+.obsidian-browser-error {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	padding: 2rem;
+	color: var(--text-error);
+	text-align: center;
+	font-size: 14px;
+}
+
+/* Status Bar */
+.obsidian-browser-status-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 2px 10px;
+	background: var(--background-secondary);
+	border-top: 1px solid var(--background-modifier-border);
+	font-size: 11px;
+	color: var(--text-muted);
+	flex-shrink: 0;
+	min-height: 22px;
+}
+
+.obsidian-browser-status-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	flex: 1;
+}
+
+.obsidian-browser-engine-badge {
+	padding: 1px 6px;
+	border-radius: 3px;
+	font-size: 10px;
+	background: var(--background-modifier-border);
+	flex-shrink: 0;
+	margin-left: 8px;
+}
+
+.obsidian-browser-engine-badge.engine-webview {
+	background: color-mix(in srgb, var(--color-green) 20%, transparent);
+	color: var(--color-green);
+}
+
+.obsidian-browser-engine-badge.engine-iframe-blob {
+	background: color-mix(in srgb, var(--color-yellow) 20%, transparent);
+	color: var(--color-yellow);
+}
+
+.obsidian-browser-engine-badge.engine-unavailable {
+	background: color-mix(in srgb, var(--color-red) 20%, transparent);
+	color: var(--color-red);
+}
+
+/* Settings compatibility report */
+.obsidian-browser-compat-report {
+	max-height: 300px;
+	overflow-y: auto;
+}
+
+/* Standalone web page tab */
+.obsidian-browser-page-view {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	padding: 0 !important;
+	overflow: hidden;
+}
+
+.obsidian-browser-page-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 4px 10px;
+	background: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+	min-height: 32px;
+}
+
+.obsidian-browser-page-title {
+	font-size: 13px;
+	color: var(--text-normal);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	flex: 1;
+}
+
+.obsidian-browser-page-title.is-loading {
+	opacity: 0.6;
+}
+
+.obsidian-browser-page-actions {
+	display: flex;
+	gap: 2px;
+	flex-shrink: 0;
+}
+
+.obsidian-browser-page-content {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	min-height: 0;
+	position: relative;
+}
+
+.obsidian-browser-page-status {
+	padding: 8px 12px;
+	background: var(--background-modifier-error);
+	color: var(--text-error);
+	font-size: 12px;
+	flex-shrink: 0;
+}

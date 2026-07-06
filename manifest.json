@@ -1,0 +1,10 @@
+{
+	"id": "obsidian-browser",
+	"name": "Obsidian Browser",
+	"version": "1.0.0",
+	"minAppVersion": "1.5.0",
+	"description": "A full Chromium browser embedded in Obsidian for opening and testing local HTML files with file:// support.",
+	"author": "Pranav",
+	"authorUrl": "",
+	"isDesktopOnly": true
+}

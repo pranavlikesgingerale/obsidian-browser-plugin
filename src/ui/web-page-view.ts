@@ -1,0 +1,184 @@
+import { ItemView, WorkspaceLeaf, setIcon, type ViewStateResult } from "obsidian";
+import type ObsidianBrowserPlugin from "../main";
+import { WEB_PAGE_VIEW_TYPE } from "../types";
+import { BrowserManager } from "../browser/browser-manager";
+import { FileWatcher } from "../utils/file-watcher";
+import { parsePageNote } from "../page-notes/page-notes";
+
+/**
+ * A single webpage as its own Obsidian tab — no browser chrome, just the page.
+ */
+export class WebPageView extends ItemView {
+	private browserManager: BrowserManager | null = null;
+	private fileWatcher = new FileWatcher();
+	private contentEl_: HTMLElement | null = null;
+	private titleEl: HTMLElement | null = null;
+	private statusEl: HTMLElement | null = null;
+	private currentUrl = "";
+	private currentTitle = "";
+	private sourcePath = "";
+	private pendingUrl: string | null = null;
+	private pendingTitle: string | undefined;
+
+	constructor(leaf: WorkspaceLeaf, private plugin: ObsidianBrowserPlugin) {
+		super(leaf);
+
+		this.fileWatcher.onChange(() => {
+			if (plugin.settings.autoRefresh && plugin.settings.watchFileChanges) {
+				this.browserManager?.reload();
+			}
+		});
+	}
+
+	getViewType(): string {
+		return WEB_PAGE_VIEW_TYPE;
+	}
+
+	getDisplayText(): string {
+		return this.currentTitle || "Web Page";
+	}
+
+	getIcon(): string {
+		return "globe";
+	}
+
+	getState(): Record<string, unknown> {
+		return {
+			url: this.currentUrl,
+			title: this.currentTitle,
+			sourcePath: this.sourcePath || undefined,
+		};
+	}
+
+	async setState(state: Record<string, unknown>, _result: ViewStateResult): Promise<void> {
+		const url = state.url as string | undefined;
+		if (url && this.browserManager) {
+			this.sourcePath = (state.sourcePath as string) ?? "";
+			this.loadPage(url, state.title as string | undefined);
+		} else if (url) {
+			this.pendingUrl = url;
+			this.pendingTitle = state.title as string | undefined;
+			this.sourcePath = (state.sourcePath as string) ?? "";
+		}
+	}
+
+	async onOpen(): Promise<void> {
+		const container = this.containerEl.children[1] as HTMLElement;
+		container.empty();
+		container.addClass("obsidian-browser-page-view");
+
+		const header = container.createDiv({ cls: "obsidian-browser-page-header" });
+		this.titleEl = header.createSpan({ cls: "obsidian-browser-page-title", text: "Loading..." });
+
+		const actions = header.createDiv({ cls: "obsidian-browser-page-actions" });
+
+		const reloadBtn = actions.createEl("button", { cls: "obsidian-browser-btn", attr: { title: "Reload" } });
+		setIcon(reloadBtn, "rotate-cw");
+		reloadBtn.addEventListener("click", () => this.browserManager?.reload());
+
+		const browserBtn = actions.createEl("button", {
+			cls: "obsidian-browser-btn",
+			attr: { title: "Open in full browser" },
+		});
+		setIcon(browserBtn, "external-link");
+		browserBtn.addEventListener("click", () => {
+			void this.plugin.activateBrowserView().then((view) => {
+				view?.navigateTo(this.currentUrl);
+			});
+		});
+
+		this.contentEl_ = container.createDiv({ cls: "obsidian-browser-page-content" });
+		this.statusEl = container.createDiv({ cls: "obsidian-browser-page-status" });
+		this.statusEl.style.display = "none";
+
+		this.browserManager = new BrowserManager(this.plugin.settings, {
+			onLoadStart: () => this.titleEl?.addClass("is-loading"),
+			onLoadStop: () => this.titleEl?.removeClass("is-loading"),
+			onNavigate: (url) => {
+				this.currentUrl = url;
+			},
+			onTitleChange: (title) => {
+				this.currentTitle = title;
+				if (this.titleEl) this.titleEl.setText(title);
+			},
+			onFaviconChange: () => {},
+			onLoadingStateChange: () => {},
+			onCanNavigateChange: () => {},
+			onConsoleMessage: (msg) => {
+				if (this.plugin.settings.forwardConsoleLogs) {
+					console.log(`[Web Page:${msg.level}]`, msg.message);
+				}
+			},
+			onNewWindow: (url) => this.loadPage(url),
+			onError: (msg) => this.showError(msg),
+		});
+
+		if (this.contentEl_) {
+			const engine = this.browserManager.initialize(this.contentEl_);
+			if (engine === "iframe-blob") {
+				this.showError(
+					"Using iframe fallback — local SPAs (like your L app) need webview mode. Check Settings → Compatibility.",
+				);
+			}
+		}
+
+		const state = this.leaf.getViewState().state as Record<string, unknown> | undefined;
+		if (state?.url) {
+			this.sourcePath = (state.sourcePath as string) ?? "";
+			this.loadPage(state.url as string, state.title as string | undefined);
+		} else if (this.pendingUrl) {
+			this.loadPage(this.pendingUrl, this.pendingTitle);
+			this.pendingUrl = null;
+			this.pendingTitle = undefined;
+		} else {
+			const file = this.app.workspace.getActiveFile();
+			if (file) {
+				const data = await parsePageNote(this.plugin.app, file);
+				if (data) {
+					this.sourcePath = file.path;
+					this.loadPage(data.url, data.title);
+				}
+			}
+		}
+	}
+
+	async onClose(): Promise<void> {
+		this.fileWatcher.stop();
+		this.browserManager?.destroy();
+		this.browserManager = null;
+	}
+
+	loadPage(url: string, title?: string): void {
+		if (!url) return;
+		this.currentUrl = url;
+		if (title) {
+			this.currentTitle = title;
+			if (this.titleEl) this.titleEl.setText(title);
+		}
+		this.browserManager?.loadUrl(url);
+
+		if (this.plugin.settings.watchFileChanges) {
+			this.fileWatcher.watch(url);
+		}
+	}
+
+	reload(): void {
+		this.browserManager?.reload();
+	}
+
+	getUrl(): string {
+		return this.currentUrl;
+	}
+
+	getTitle(): string {
+		return this.currentTitle;
+	}
+
+	private showError(msg: string): void {
+		if (this.statusEl) {
+			this.statusEl.style.display = "block";
+			this.statusEl.setText(msg);
+		}
+		if (this.titleEl) this.titleEl.setText(msg);
+	}
+}

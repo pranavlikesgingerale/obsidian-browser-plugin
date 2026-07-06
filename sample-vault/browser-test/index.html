@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Sample Site — Obsidian Browser Test</title>
+	<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+	<header>
+		<h1>Obsidian Browser Test Page</h1>
+		<p>This page tests local HTML rendering with relative assets.</p>
+	</header>
+
+	<main>
+		<section id="demo">
+			<h2>JavaScript Demo</h2>
+			<button id="btn">Click me</button>
+			<p id="output">Waiting for click...</p>
+		</section>
+
+		<section id="image-test">
+			<h2>Image Test</h2>
+			<img src="./assets/logo.svg" alt="Logo" width="64" height="64">
+		</section>
+
+		<section id="module-test">
+			<h2>ES Module Test</h2>
+			<p id="module-output">Loading module...</p>
+		</section>
+
+		<section id="storage-test">
+			<h2>Storage Test</h2>
+			<p id="storage-output"></p>
+		</section>
+
+		<nav>
+			<a href="./sub/page.html">Sub-page (relative link)</a>
+		</nav>
+	</main>
+
+	<script src="./script.js"></script>
+	<script type="module" src="./module.js"></script>
+</body>
+</html>
