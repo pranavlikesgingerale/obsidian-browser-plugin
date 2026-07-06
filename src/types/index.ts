@@ -154,10 +154,10 @@ export const SUPPORTED_EXTENSIONS = [
 export type SupportedExtension = (typeof SUPPORTED_EXTENSIONS)[number];
 
 /** View type constant for the browser ItemView. */
-export const BROWSER_VIEW_TYPE = "obsidian-browser-view";
+export const BROWSER_VIEW_TYPE = "local-html-browser-view";
 
 /** View type for a single webpage opened as its own tab/note. */
-export const WEB_PAGE_VIEW_TYPE = "obsidian-browser-web-page";
+export const WEB_PAGE_VIEW_TYPE = "local-html-browser-web-page";
 
 /** State persisted for a web page tab. */
 export interface WebPageState {

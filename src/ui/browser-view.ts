@@ -1,5 +1,5 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
-import type ObsidianBrowserPlugin from "../main";
+import type LocalHtmlBrowserPlugin from "../main";
 import { BROWSER_VIEW_TYPE } from "../types";
 import { BrowserManager } from "../browser/browser-manager";
 import { TabManager } from "../tabs/tab-manager";
@@ -25,7 +25,7 @@ export class BrowserView extends ItemView {
 	private fileWatcher: FileWatcher;
 	private webviewContainer: HTMLElement | null = null;
 
-	constructor(leaf: WorkspaceLeaf, private plugin: ObsidianBrowserPlugin) {
+	constructor(leaf: WorkspaceLeaf, private plugin: LocalHtmlBrowserPlugin) {
 		super(leaf);
 		this.tabManager = new TabManager();
 		this.devToolsManager = new DevToolsManager(plugin.settings.forwardConsoleLogs);
@@ -59,9 +59,9 @@ export class BrowserView extends ItemView {
 	async onOpen(): Promise<void> {
 		const container = this.containerEl.children[1] as HTMLElement;
 		container.empty();
-		container.addClass("obsidian-browser-view-container");
+		container.addClass("local-html-browser-view-container");
 
-		const root = container.createDiv({ cls: "obsidian-browser-root" });
+		const root = container.createDiv({ cls: "local-html-browser-root" });
 
 		this.toolbar = new Toolbar({
 			onBack: () => this.browserManager?.goBack(),
@@ -89,7 +89,7 @@ export class BrowserView extends ItemView {
 		});
 		root.appendChild(this.tabBar.el);
 
-		this.webviewContainer = root.createDiv({ cls: "obsidian-browser-content" });
+		this.webviewContainer = root.createDiv({ cls: "local-html-browser-content" });
 
 		this.statusBar = new StatusBar();
 		this.statusBar.setVisible(this.plugin.settings.showStatusBar);
@@ -116,8 +116,8 @@ export class BrowserView extends ItemView {
 
 		if (engineType === "unavailable") {
 			this.webviewContainer.createDiv({
-				cls: "obsidian-browser-error",
-				text: "Browser engine unavailable. Check Settings → Obsidian Browser → Compatibility.",
+				cls: "local-html-browser-error",
+				text: "Browser engine unavailable. Check Settings → Local HTML Browser → Compatibility.",
 			});
 		}
 
@@ -321,7 +321,7 @@ export class BrowserView extends ItemView {
 
 	private loadWelcomePage(): void {
 		const welcomeHtml = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Obsidian Browser</title>
+<html><head><meta charset="utf-8"><title>Local HTML Browser</title>
 <style>
 body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center;
 min-height: 100vh; margin: 0; background: #1e1e1e; color: #ccc; }
@@ -329,7 +329,7 @@ min-height: 100vh; margin: 0; background: #1e1e1e; color: #ccc; }
 h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
 p { color: #888; line-height: 1.6; }
 </style></head><body><div class="card">
-<h1>Obsidian Browser</h1>
+<h1>Local HTML Browser</h1>
 <p>Open local HTML files with full Chromium rendering.<br>
 Use the toolbar to open files, folders, or enter a <code>file://</code> URL.</p>
 </div></body></html>`;

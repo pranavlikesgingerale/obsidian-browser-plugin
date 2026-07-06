@@ -31,7 +31,7 @@ export class IframeFallbackEngine {
 		try {
 			this.container = container;
 			const iframe = document.createElement("iframe");
-			iframe.className = "obsidian-browser-iframe";
+			iframe.className = "local-html-browser-iframe";
 			iframe.style.width = "100%";
 			iframe.style.height = "100%";
 			iframe.style.border = "none";

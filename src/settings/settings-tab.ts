@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
-import type ObsidianBrowserPlugin from "../main";
+import type LocalHtmlBrowserPlugin from "../main";
 import type { BrowserPluginSettings } from "../types";
 import {
 	detectCompatibility,
@@ -8,7 +8,7 @@ import {
 
 /** Plugin settings tab with security warnings and compatibility report. */
 export class BrowserSettingTab extends PluginSettingTab {
-	constructor(app: App, private plugin: ObsidianBrowserPlugin) {
+	constructor(app: App, private plugin: LocalHtmlBrowserPlugin) {
 		super(app, plugin);
 	}
 
@@ -16,7 +16,7 @@ export class BrowserSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl("h2", { text: "Obsidian Browser Settings" });
+		containerEl.createEl("h2", { text: "Local HTML Browser Settings" });
 
 		containerEl.createEl("h3", { text: "General" });
 
@@ -178,7 +178,7 @@ export class BrowserSettingTab extends PluginSettingTab {
 			);
 
 		const pre = containerEl.createEl("pre", {
-			cls: "obsidian-browser-compat-report",
+			cls: "local-html-browser-compat-report",
 			text: report,
 		});
 		pre.style.whiteSpace = "pre-wrap";

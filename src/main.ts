@@ -26,8 +26,8 @@ interface PersistedData {
 	bookmarks: Bookmark[];
 }
 
-/** Obsidian Browser — full Chromium browser for local HTML development. */
-export default class ObsidianBrowserPlugin extends Plugin {
+/** Local HTML Browser — Chromium browser for local file:// HTML apps. */
+export default class LocalHtmlBrowserPlugin extends Plugin {
 	settings: BrowserPluginSettings = { ...DEFAULT_SETTINGS };
 	historyManager = new HistoryManager();
 	bookmarkManager = new BookmarkManager();
@@ -41,7 +41,7 @@ export default class ObsidianBrowserPlugin extends Plugin {
 
 		if (!compat.webviewAvailable) {
 			new Notice(
-				"Obsidian Browser: webview unavailable — using iframe fallback. See settings for details.",
+				"Local HTML Browser: webview unavailable — using iframe fallback. See settings for details.",
 				10000,
 			);
 		}
@@ -56,7 +56,7 @@ export default class ObsidianBrowserPlugin extends Plugin {
 			}),
 		);
 
-		this.addRibbonIcon("globe", "Open Obsidian Browser", () => {
+		this.addRibbonIcon("globe", "Open Local HTML Browser", () => {
 			this.activateBrowserView();
 		});
 
@@ -85,7 +85,7 @@ export default class ObsidianBrowserPlugin extends Plugin {
 			}),
 		);
 
-		mainLogger.info("Obsidian Browser plugin loaded.");
+		mainLogger.info("Local HTML Browser plugin loaded.");
 	}
 
 	onunload(): void {

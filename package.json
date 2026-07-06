@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-browser",
-	"version": "1.0.0",
-	"description": "A full Chromium browser embedded in Obsidian for local HTML development",
+	"name": "local-html-browser",
+	"version": "1.0.1",
+	"description": "Run local file:// HTML apps inside the editor with full browser behavior.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",

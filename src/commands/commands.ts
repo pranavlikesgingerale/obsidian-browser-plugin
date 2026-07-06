@@ -1,9 +1,9 @@
-import type ObsidianBrowserPlugin from "../main";
+import type LocalHtmlBrowserPlugin from "../main";
 import { openFileDialog, openFolderDialog } from "../ui/download-manager";
 import { pathToFileUrl } from "../utils/paths";
 
 /** Register all plugin commands. */
-export function registerCommands(plugin: ObsidianBrowserPlugin): void {
+export function registerCommands(plugin: LocalHtmlBrowserPlugin): void {
 	plugin.addCommand({
 		id: "open-browser",
 		name: "Open browser",

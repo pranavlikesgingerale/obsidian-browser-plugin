@@ -7,8 +7,8 @@ document.getElementById('btn')?.addEventListener('click', () => {
 
 // Storage test
 try {
-	localStorage.setItem('obsidian-browser-test', 'works');
-	const val = localStorage.getItem('obsidian-browser-test');
+	localStorage.setItem('local-html-browser-test', 'works');
+	const val = localStorage.getItem('local-html-browser-test');
 	const el = document.getElementById('storage-output');
 	if (el) el.textContent = `localStorage: ${val}`;
 } catch (e) {
@@ -16,4 +16,4 @@ try {
 	if (el) el.textContent = `localStorage unavailable: ${e}`;
 }
 
-console.log('Obsidian Browser test page loaded successfully');
+console.log('Local HTML Browser test page loaded successfully');

@@ -42,8 +42,8 @@ export class WebviewEngine {
 		private events: BrowserEngineEvents,
 	) {
 		this.partition = settings.incognitoMode
-			? `persist:obsidian-browser-incognito-${Date.now()}`
-			: "persist:obsidian-browser";
+			? `persist:local-html-browser-incognito-${Date.now()}`
+			: "persist:local-html-browser";
 	}
 
 	mount(container: HTMLElement): boolean {
@@ -56,7 +56,7 @@ export class WebviewEngine {
 			container.style.overflow = "hidden";
 
 			const webview = document.createElement("webview") as WebviewElement;
-			webview.className = "obsidian-browser-webview";
+			webview.className = "local-html-browser-webview";
 			webview.setAttribute("allowpopups", "");
 			webview.setAttribute("partition", this.partition);
 			webview.setAttribute("webpreferences", buildWebPreferences(this.settings, false));

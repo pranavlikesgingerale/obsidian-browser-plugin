@@ -26,9 +26,9 @@ export class Toolbar {
 
 	constructor(callbacks: ToolbarCallbacks) {
 		this.el = document.createElement("div");
-		this.el.className = "obsidian-browser-toolbar";
+		this.el.className = "local-html-browser-toolbar";
 
-		const navGroup = this.el.createDiv({ cls: "obsidian-browser-nav-group" });
+		const navGroup = this.el.createDiv({ cls: "local-html-browser-nav-group" });
 
 		this.createNavButton(navGroup, "arrow-left", "Back", callbacks.onBack);
 		this.createNavButton(navGroup, "arrow-right", "Forward", callbacks.onForward);
@@ -37,13 +37,13 @@ export class Toolbar {
 		this.createNavButton(navGroup, "square", "Stop", callbacks.onStop);
 		this.createNavButton(navGroup, "home", "Home", callbacks.onHome);
 
-		const urlBar = this.el.createDiv({ cls: "obsidian-browser-url-bar" });
-		this.loadingIndicator = urlBar.createDiv({ cls: "obsidian-browser-loading-indicator" });
+		const urlBar = this.el.createDiv({ cls: "local-html-browser-url-bar" });
+		this.loadingIndicator = urlBar.createDiv({ cls: "local-html-browser-loading-indicator" });
 		this.loadingIndicator.style.display = "none";
 
 		this.urlInput = urlBar.createEl("input", {
 			type: "text",
-			cls: "obsidian-browser-url-input",
+			cls: "local-html-browser-url-input",
 			attr: { placeholder: "Enter file:// path or URL..." },
 		});
 
@@ -53,7 +53,7 @@ export class Toolbar {
 			}
 		});
 
-		const actionGroup = this.el.createDiv({ cls: "obsidian-browser-action-group" });
+		const actionGroup = this.el.createDiv({ cls: "local-html-browser-action-group" });
 		this.createNavButton(actionGroup, "folder-open", "Open File", callbacks.onOpenFile);
 		this.createNavButton(actionGroup, "folder", "Open Folder", callbacks.onOpenFolder);
 		this.bookmarkBtn = this.createNavButton(actionGroup, "bookmark", "Bookmark", callbacks.onToggleBookmark);
@@ -77,7 +77,7 @@ export class Toolbar {
 	}
 
 	setNavState(canBack: boolean, canForward: boolean): void {
-		const buttons = this.el.querySelectorAll(".obsidian-browser-nav-group button");
+		const buttons = this.el.querySelectorAll(".local-html-browser-nav-group button");
 		if (buttons[0]) (buttons[0] as HTMLButtonElement).disabled = !canBack;
 		if (buttons[1]) (buttons[1] as HTMLButtonElement).disabled = !canForward;
 	}
@@ -88,7 +88,7 @@ export class Toolbar {
 		title: string,
 		onClick: () => void,
 	): HTMLButtonElement {
-		const btn = parent.createEl("button", { cls: "obsidian-browser-btn", attr: { title } });
+		const btn = parent.createEl("button", { cls: "local-html-browser-btn", attr: { title } });
 		setIcon(btn, icon);
 		btn.addEventListener("click", onClick);
 		return btn;

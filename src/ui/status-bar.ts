@@ -8,9 +8,9 @@ export class StatusBar {
 
 	constructor() {
 		this.el = document.createElement("div");
-		this.el.className = "obsidian-browser-status-bar";
-		this.statusText = this.el.createSpan({ cls: "obsidian-browser-status-text", text: "Ready" });
-		this.engineBadge = this.el.createSpan({ cls: "obsidian-browser-engine-badge" });
+		this.el.className = "local-html-browser-status-bar";
+		this.statusText = this.el.createSpan({ cls: "local-html-browser-status-text", text: "Ready" });
+		this.engineBadge = this.el.createSpan({ cls: "local-html-browser-engine-badge" });
 	}
 
 	setStatus(text: string): void {
@@ -25,7 +25,7 @@ export class StatusBar {
 			unavailable: "Unavailable",
 		};
 		this.engineBadge.setText(labels[type]);
-		this.engineBadge.className = `obsidian-browser-engine-badge engine-${type}`;
+		this.engineBadge.className = `local-html-browser-engine-badge engine-${type}`;
 	}
 
 	setVisible(visible: boolean): void {

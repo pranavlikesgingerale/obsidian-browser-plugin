@@ -15,12 +15,12 @@ export class TabBar {
 
 	constructor(private callbacks: TabBarCallbacks) {
 		this.el = document.createElement("div");
-		this.el.className = "obsidian-browser-tab-bar";
+		this.el.className = "local-html-browser-tab-bar";
 
-		this.tabListEl = this.el.createDiv({ cls: "obsidian-browser-tab-list" });
+		this.tabListEl = this.el.createDiv({ cls: "local-html-browser-tab-list" });
 
 		const newTabBtn = this.el.createEl("button", {
-			cls: "obsidian-browser-tab-new",
+			cls: "local-html-browser-tab-new",
 			attr: { title: "New Tab" },
 		});
 		setIcon(newTabBtn, "plus");
@@ -32,20 +32,20 @@ export class TabBar {
 
 		for (const tab of tabs) {
 			const tabEl = this.tabListEl.createDiv({
-				cls: `obsidian-browser-tab${tab.id === activeId ? " is-active" : ""}${tab.isLoading ? " is-loading" : ""}`,
+				cls: `local-html-browser-tab${tab.id === activeId ? " is-active" : ""}${tab.isLoading ? " is-loading" : ""}`,
 			});
 
 			if (tab.favicon) {
-				tabEl.createEl("img", { cls: "obsidian-browser-tab-favicon", attr: { src: tab.favicon } });
+				tabEl.createEl("img", { cls: "local-html-browser-tab-favicon", attr: { src: tab.favicon } });
 			} else {
-				const iconEl = tabEl.createSpan({ cls: "obsidian-browser-tab-icon" });
+				const iconEl = tabEl.createSpan({ cls: "local-html-browser-tab-icon" });
 				setIcon(iconEl, "globe");
 			}
 
-			tabEl.createSpan({ cls: "obsidian-browser-tab-title", text: tab.title || "New Tab" });
+			tabEl.createSpan({ cls: "local-html-browser-tab-title", text: tab.title || "New Tab" });
 
 			const closeBtn = tabEl.createEl("button", {
-				cls: "obsidian-browser-tab-close",
+				cls: "local-html-browser-tab-close",
 				attr: { title: "Close Tab" },
 			});
 			setIcon(closeBtn, "x");

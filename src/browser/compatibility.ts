@@ -130,7 +130,7 @@ export function buildWebPreferences(settings: BrowserPluginSettings, incognito: 
 	prefs.push(`sandbox=${settings.sandboxMode ? "yes" : "no"}`);
 
 	if (incognito || settings.incognitoMode) {
-		prefs.push("partition=persist:obsidian-browser-incognito");
+		prefs.push("partition=persist:local-html-browser-incognito");
 	}
 
 	return prefs.join(",");

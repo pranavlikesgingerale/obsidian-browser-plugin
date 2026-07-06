@@ -1,5 +1,5 @@
 import { ItemView, WorkspaceLeaf, setIcon, type ViewStateResult } from "obsidian";
-import type ObsidianBrowserPlugin from "../main";
+import type LocalHtmlBrowserPlugin from "../main";
 import { WEB_PAGE_VIEW_TYPE } from "../types";
 import { BrowserManager } from "../browser/browser-manager";
 import { FileWatcher } from "../utils/file-watcher";
@@ -20,7 +20,7 @@ export class WebPageView extends ItemView {
 	private pendingUrl: string | null = null;
 	private pendingTitle: string | undefined;
 
-	constructor(leaf: WorkspaceLeaf, private plugin: ObsidianBrowserPlugin) {
+	constructor(leaf: WorkspaceLeaf, private plugin: LocalHtmlBrowserPlugin) {
 		super(leaf);
 
 		this.fileWatcher.onChange(() => {
@@ -65,19 +65,19 @@ export class WebPageView extends ItemView {
 	async onOpen(): Promise<void> {
 		const container = this.containerEl.children[1] as HTMLElement;
 		container.empty();
-		container.addClass("obsidian-browser-page-view");
+		container.addClass("local-html-browser-page-view");
 
-		const header = container.createDiv({ cls: "obsidian-browser-page-header" });
-		this.titleEl = header.createSpan({ cls: "obsidian-browser-page-title", text: "Loading..." });
+		const header = container.createDiv({ cls: "local-html-browser-page-header" });
+		this.titleEl = header.createSpan({ cls: "local-html-browser-page-title", text: "Loading..." });
 
-		const actions = header.createDiv({ cls: "obsidian-browser-page-actions" });
+		const actions = header.createDiv({ cls: "local-html-browser-page-actions" });
 
-		const reloadBtn = actions.createEl("button", { cls: "obsidian-browser-btn", attr: { title: "Reload" } });
+		const reloadBtn = actions.createEl("button", { cls: "local-html-browser-btn", attr: { title: "Reload" } });
 		setIcon(reloadBtn, "rotate-cw");
 		reloadBtn.addEventListener("click", () => this.browserManager?.reload());
 
 		const browserBtn = actions.createEl("button", {
-			cls: "obsidian-browser-btn",
+			cls: "local-html-browser-btn",
 			attr: { title: "Open in full browser" },
 		});
 		setIcon(browserBtn, "external-link");
@@ -87,8 +87,8 @@ export class WebPageView extends ItemView {
 			});
 		});
 
-		this.contentEl_ = container.createDiv({ cls: "obsidian-browser-page-content" });
-		this.statusEl = container.createDiv({ cls: "obsidian-browser-page-status" });
+		this.contentEl_ = container.createDiv({ cls: "local-html-browser-page-content" });
+		this.statusEl = container.createDiv({ cls: "local-html-browser-page-status" });
 		this.statusEl.style.display = "none";
 
 		this.browserManager = new BrowserManager(this.plugin.settings, {
