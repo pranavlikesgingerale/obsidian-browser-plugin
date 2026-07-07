@@ -1,4 +1,5 @@
-import type { BrowserTab, ClosedTabSnapshot } from "../types";
+import type { BrowserTab, ClosedTabSnapshot, PersistedTab } from "../types";
+import { isPersistableBrowserUrl } from "../utils/browser-url";
 import { generateId } from "../utils/paths";
 
 /**
@@ -90,6 +91,47 @@ export class TabManager {
 		if (!tab) return;
 		Object.assign(tab, updates);
 		this.notify();
+	}
+
+	serializeSession(): { tabs: PersistedTab[]; activeTabIndex: number } {
+		const tabs: PersistedTab[] = [];
+		let activeTabIndex = 0;
+
+		for (const tab of this.tabs) {
+			if (!isPersistableBrowserUrl(tab.url)) continue;
+			if (tab.id === this.activeTabId) {
+				activeTabIndex = tabs.length;
+			}
+			tabs.push({
+				url: tab.url,
+				title: tab.title || tab.url,
+				favicon: tab.favicon || undefined,
+			});
+		}
+
+		return { tabs, activeTabIndex: tabs.length > 0 ? activeTabIndex : 0 };
+	}
+
+	restoreSession(tabs: PersistedTab[], activeTabIndex: number): boolean {
+		const restorable = tabs.filter((tab) => isPersistableBrowserUrl(tab.url));
+		if (restorable.length === 0) return false;
+
+		this.tabs = restorable.map((tab) => ({
+			id: generateId(),
+			url: tab.url,
+			title: tab.title || tab.url,
+			favicon: tab.favicon ?? "",
+			isLoading: false,
+			canGoBack: false,
+			canGoForward: false,
+			createdAt: Date.now(),
+			lastActiveAt: Date.now(),
+		}));
+
+		const index = Math.min(Math.max(activeTabIndex, 0), this.tabs.length - 1);
+		this.activeTabId = this.tabs[index]?.id ?? this.tabs[0]?.id ?? null;
+		this.notify();
+		return true;
 	}
 
 	private notify(): void {

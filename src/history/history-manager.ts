@@ -1,4 +1,5 @@
 import type { HistoryEntry } from "../types";
+import { isPersistableBrowserUrl } from "../utils/browser-url";
 import { generateId } from "../utils/paths";
 
 const MAX_HISTORY = 500;
@@ -14,7 +15,7 @@ export class HistoryManager {
 	}
 
 	addEntry(url: string, title: string): void {
-		if (!url || url === "about:blank") return;
+		if (!isPersistableBrowserUrl(url)) return;
 
 		const last = this.entries[this.entries.length - 1];
 		if (last && last.url === url) {
@@ -33,6 +34,13 @@ export class HistoryManager {
 		if (this.entries.length > MAX_HISTORY) {
 			this.entries = this.entries.slice(-MAX_HISTORY);
 		}
+	}
+
+	removeEntry(id: string): boolean {
+		const index = this.entries.findIndex((entry) => entry.id === id);
+		if (index === -1) return false;
+		this.entries.splice(index, 1);
+		return true;
 	}
 
 	clear(): void {

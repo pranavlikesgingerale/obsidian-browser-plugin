@@ -1,16 +1,16 @@
-import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, Notice, WorkspaceLeaf, type ViewStateResult } from "obsidian";
 import type LocalHtmlBrowserPlugin from "../main";
-import { BROWSER_VIEW_TYPE } from "../types";
+import { BROWSER_VIEW_TYPE, parseBrowserViewState, type BrowserViewState } from "../types";
 import { BrowserManager } from "../browser/browser-manager";
 import { TabManager } from "../tabs/tab-manager";
 import { Toolbar } from "./toolbar";
 import { TabBar } from "./tab-bar";
 import { StatusBar } from "./status-bar";
+import { HistoryPanel } from "./history-panel";
 import { DevToolsManager } from "../devtools/devtools-manager";
 import { FileWatcher } from "../utils/file-watcher";
 import { openFileDialog, openFolderDialog } from "./download-manager";
 import { pathToFileUrl } from "../utils/paths";
-import { Notice } from "obsidian";
 import { getViewContentContainer } from "../utils/dom";
 
 /**
@@ -22,9 +22,13 @@ export class BrowserView extends ItemView {
 	private toolbar: Toolbar | null = null;
 	private tabBar: TabBar | null = null;
 	private statusBar: StatusBar | null = null;
+	private historyPanel: HistoryPanel | null = null;
 	private devToolsManager: DevToolsManager;
 	private fileWatcher: FileWatcher;
 	private webviewContainer: HTMLElement | null = null;
+	private rootEl: HTMLElement | null = null;
+	private pendingState: BrowserViewState | null = null;
+	private persistTimer: number | null = null;
 
 	constructor(leaf: WorkspaceLeaf, private plugin: LocalHtmlBrowserPlugin) {
 		super(leaf);
@@ -34,14 +38,8 @@ export class BrowserView extends ItemView {
 
 		this.tabManager.onTabsChanged = (tabs, activeId) => {
 			this.tabBar?.render(tabs, activeId);
+			this.schedulePersist();
 		};
-
-		this.fileWatcher.onChange(() => {
-			if (plugin.settings.autoRefresh && plugin.settings.watchFileChanges) {
-				this.browserManager?.reload();
-				this.statusBar?.setStatus("Auto-refreshed on file change");
-			}
-		});
 	}
 
 	getViewType(): string {
@@ -57,12 +55,21 @@ export class BrowserView extends ItemView {
 		return "globe";
 	}
 
+	getState(): Record<string, unknown> {
+		return this.tabManager.serializeSession();
+	}
+
+	async setState(state: Record<string, unknown>, _result: ViewStateResult): Promise<void> {
+		this.pendingState = parseBrowserViewState(state);
+	}
+
 	async onOpen(): Promise<void> {
 		const container = getViewContentContainer(this.containerEl);
 		container.empty();
 		container.addClass("local-html-browser-view-container");
 
 		const root = container.createDiv({ cls: "local-html-browser-root" });
+		this.rootEl = root;
 
 		this.toolbar = new Toolbar({
 			onBack: () => this.browserManager?.goBack(),
@@ -75,12 +82,23 @@ export class BrowserView extends ItemView {
 			onOpenFile: () => { void this.handleOpenFile(); },
 			onOpenFolder: () => { void this.handleOpenFolder(); },
 			onToggleBookmark: () => this.toggleBookmark(),
+			onToggleHistory: () => this.historyPanel?.toggle(),
 			onToggleDevTools: () => this.browserManager?.toggleDevTools(),
 			onNewTab: () => this.createNewTab(),
 			onOpenAsPage: () => this.openCurrentAsPage(),
 			onSaveAsNote: () => this.saveCurrentAsNote(),
 		});
 		root.appendChild(this.toolbar.el);
+
+		this.historyPanel = new HistoryPanel(
+			root,
+			() => this.plugin.historyManager.getEntries(),
+			{
+				onOpenEntry: (url) => this.navigateTo(url),
+				onDeleteEntry: (id) => this.deleteHistoryEntry(id),
+				onClearAll: () => this.clearHistory(),
+			},
+		);
 
 		this.tabBar = new TabBar({
 			onSelectTab: (id) => this.selectTab(id),
@@ -122,19 +140,27 @@ export class BrowserView extends ItemView {
 			});
 		}
 
-		// Create initial tab
-		this.tabManager.createTab();
-		if (this.plugin.settings.homeUrl) {
-			this.navigateTo(this.plugin.settings.homeUrl);
-		} else {
-			this.loadWelcomePage();
+		if (!this.restoreInitialSession()) {
+			this.tabManager.createTab();
+			if (this.plugin.settings.homeUrl) {
+				this.navigateTo(this.plugin.settings.homeUrl);
+			} else {
+				this.loadWelcomePage();
+			}
 		}
 	}
 
 	async onClose(): Promise<void> {
+		this.clearPersistTimer();
+		void this.plugin.saveBrowserSession(this.tabManager.serializeSession());
 		this.fileWatcher.stop();
 		this.browserManager?.destroy();
 		this.browserManager = null;
+	}
+
+	/** Save tabs/session before Obsidian shuts down. */
+	persistSessionNow(): void {
+		void this.plugin.saveBrowserSession(this.tabManager.serializeSession());
 	}
 
 	/** Navigate to URL in active tab. */
@@ -195,6 +221,60 @@ export class BrowserView extends ItemView {
 		return this.browserManager?.getTitle() ?? "";
 	}
 
+	showHistoryPanel(): void {
+		this.historyPanel?.show();
+	}
+
+	private restoreInitialSession(): boolean {
+		const workspaceState = parseBrowserViewState(this.leaf.getViewState().state);
+		const pluginSession = this.plugin.settings.restoreSessionOnStartup
+			? this.plugin.getBrowserSession()
+			: null;
+		const state = this.pendingState ?? workspaceState ?? pluginSession;
+		this.pendingState = null;
+
+		if (!state || state.tabs.length === 0) return false;
+		if (!this.tabManager.restoreSession(state.tabs, state.activeTabIndex)) return false;
+
+		const activeTab = this.tabManager.getActiveTab();
+		if (activeTab?.url) {
+			this.navigateTo(activeTab.url);
+			return true;
+		}
+		return false;
+	}
+
+	private deleteHistoryEntry(id: string): void {
+		if (this.plugin.historyManager.removeEntry(id)) {
+			void this.plugin.savePersistedData();
+			new Notice("History entry removed");
+		}
+	}
+
+	private clearHistory(): void {
+		this.plugin.historyManager.clear();
+		void this.plugin.savePersistedData();
+		this.historyPanel?.render();
+		new Notice("History cleared");
+	}
+
+	private schedulePersist(): void {
+		if (this.persistTimer !== null) {
+			window.clearTimeout(this.persistTimer);
+		}
+		this.persistTimer = window.setTimeout(() => {
+			this.persistTimer = null;
+			void this.plugin.saveBrowserSession(this.tabManager.serializeSession());
+		}, 1200);
+	}
+
+	private clearPersistTimer(): void {
+		if (this.persistTimer !== null) {
+			window.clearTimeout(this.persistTimer);
+			this.persistTimer = null;
+		}
+	}
+
 	private openCurrentAsPage(): void {
 		const url = this.getCurrentUrl();
 		if (!url || url.startsWith("blob:")) {
@@ -232,6 +312,8 @@ export class BrowserView extends ItemView {
 		if (tab?.url) {
 			this.browserManager?.loadUrl(tab.url);
 			this.toolbar?.setUrl(tab.url);
+		} else if (this.tabManager.getTabs().length === 0) {
+			this.createNewTab();
 		}
 	}
 
@@ -297,6 +379,7 @@ export class BrowserView extends ItemView {
 		}
 		this.plugin.historyManager.addEntry(url, this.browserManager?.getTitle() ?? url);
 		this.toolbar?.setBookmarked(this.plugin.bookmarkManager.isBookmarked(url));
+		this.schedulePersist();
 
 		if (this.plugin.settings.watchFileChanges) {
 			this.fileWatcher.watch(url);

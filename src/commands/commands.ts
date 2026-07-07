@@ -150,6 +150,24 @@ export function registerCommands(plugin: LocalHtmlBrowserPlugin): void {
 	});
 
 	plugin.addCommand({
+		id: "show-history",
+		name: "Browser: Show history",
+		callback: async () => {
+			const view = await plugin.activateBrowserView();
+			view?.showHistoryPanel();
+		},
+	});
+
+	plugin.addCommand({
+		id: "clear-history",
+		name: "Browser: Clear history",
+		callback: async () => {
+			plugin.historyManager.clear();
+			await plugin.savePersistedData();
+		},
+	});
+
+	plugin.addCommand({
 		id: "toggle-auto-refresh",
 		name: "Browser: Toggle auto-refresh",
 		callback: async () => {

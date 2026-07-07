@@ -35,6 +35,8 @@ export interface BrowserPluginSettings {
 	openVaultHtmlAsPage: boolean;
 	/** Default folder for saved page notes (vault-relative). */
 	pageNotesFolder: string;
+	/** Restore open tabs when reopening the browser after Obsidian restarts. */
+	restoreSessionOnStartup: boolean;
 }
 
 export const DEFAULT_SETTINGS: BrowserPluginSettings = {
@@ -54,6 +56,7 @@ export const DEFAULT_SETTINGS: BrowserPluginSettings = {
 	showSecurityWarnings: true,
 	openVaultHtmlAsPage: true,
 	pageNotesFolder: "Browser Pages",
+	restoreSessionOnStartup: true,
 };
 
 /** Runtime environment detected at plugin load. */
@@ -170,6 +173,58 @@ export interface WebPageState {
 export interface PageNoteData {
 	url: string;
 	title: string;
+}
+
+/** Tab data saved for session restore. */
+export interface PersistedTab {
+	url: string;
+	title: string;
+	favicon?: string;
+}
+
+/** Workspace / plugin session snapshot for the browser view. */
+export interface BrowserSessionSnapshot {
+	tabs: PersistedTab[];
+	activeTabIndex: number;
+	savedAt?: number;
+}
+
+/** State persisted on the browser workspace leaf. */
+export interface BrowserViewState {
+	tabs: PersistedTab[];
+	activeTabIndex: number;
+}
+
+/** Parse browser view workspace state. */
+export function parseBrowserViewState(state: unknown): BrowserViewState | null {
+	if (!state || typeof state !== "object") return null;
+	const record = state as Record<string, unknown>;
+	if (!Array.isArray(record.tabs) || record.tabs.length === 0) return null;
+
+	const tabs: PersistedTab[] = [];
+	for (const item of record.tabs) {
+		if (!item || typeof item !== "object") continue;
+		const tab = item as Record<string, unknown>;
+		if (typeof tab.url !== "string" || !tab.url) continue;
+		tabs.push({
+			url: tab.url,
+			title: typeof tab.title === "string" ? tab.title : tab.url,
+			favicon: typeof tab.favicon === "string" ? tab.favicon : undefined,
+		});
+	}
+	if (tabs.length === 0) return null;
+
+	const activeTabIndex =
+		typeof record.activeTabIndex === "number" && record.activeTabIndex >= 0
+			? Math.min(record.activeTabIndex, tabs.length - 1)
+			: 0;
+
+	return { tabs, activeTabIndex };
+}
+
+/** Parse plugin-level session snapshot. */
+export function parseBrowserSession(value: unknown): BrowserSessionSnapshot | null {
+	return parseBrowserViewState(value);
 }
 
 /** Parse persisted or in-flight web page view state. */

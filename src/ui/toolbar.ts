@@ -13,6 +13,7 @@ export interface ToolbarCallbacks {
 	onOpenFile: () => void;
 	onOpenFolder: () => void;
 	onToggleBookmark: () => void;
+	onToggleHistory: () => void;
 	onToggleDevTools: () => void;
 	onNewTab: () => void;
 	onOpenAsPage: () => void;
@@ -57,6 +58,7 @@ export class Toolbar {
 		this.createNavButton(actionGroup, "folder-open", "Open File", callbacks.onOpenFile);
 		this.createNavButton(actionGroup, "folder", "Open Folder", callbacks.onOpenFolder);
 		this.bookmarkBtn = this.createNavButton(actionGroup, "bookmark", "Bookmark", callbacks.onToggleBookmark);
+		this.createNavButton(actionGroup, "history", "History", callbacks.onToggleHistory);
 		this.createNavButton(actionGroup, "layout", "Open as page", callbacks.onOpenAsPage);
 		this.createNavButton(actionGroup, "file-plus", "Save as note", callbacks.onSaveAsNote);
 		this.createNavButton(actionGroup, "code", "DevTools", callbacks.onToggleDevTools);

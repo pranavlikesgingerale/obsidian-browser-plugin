@@ -1,9 +1,11 @@
-import type { BrowserPluginSettings, Bookmark, HistoryEntry } from "../types";
+import type { BrowserPluginSettings, Bookmark, BrowserSessionSnapshot, HistoryEntry } from "../types";
+import { parseBrowserSession } from "../types";
 
 export interface PluginData {
 	settings?: Partial<BrowserPluginSettings>;
 	history?: HistoryEntry[];
 	bookmarks?: Bookmark[];
+	session?: BrowserSessionSnapshot;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -44,6 +46,7 @@ export function parseBrowserSettings(value: unknown): Partial<BrowserPluginSetti
 		"showStatusBar",
 		"showSecurityWarnings",
 		"openVaultHtmlAsPage",
+		"restoreSessionOnStartup",
 	] as const satisfies ReadonlyArray<keyof BrowserPluginSettings>;
 
 	for (const key of booleanKeys) {
@@ -77,6 +80,11 @@ function isBookmark(value: unknown): value is Bookmark {
 	);
 }
 
+function isBrowserSession(value: unknown): value is BrowserSessionSnapshot {
+	const parsed = parseBrowserSession(value);
+	return parsed !== null && parsed.tabs.length > 0;
+}
+
 export function parsePluginData(raw: unknown): PluginData {
 	if (!isRecord(raw)) return {};
 
@@ -89,6 +97,9 @@ export function parsePluginData(raw: unknown): PluginData {
 	}
 	if (Array.isArray(raw.bookmarks)) {
 		data.bookmarks = raw.bookmarks.filter(isBookmark);
+	}
+	if (raw.session !== undefined && isBrowserSession(raw.session)) {
+		data.session = parseBrowserSession(raw.session) ?? undefined;
 	}
 	return data;
 }

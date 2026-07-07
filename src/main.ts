@@ -13,6 +13,7 @@ import { BookmarkManager } from "./bookmarks/bookmark-manager";
 import { registerCommands } from "./commands/commands";
 import { detectCompatibility } from "./browser/compatibility";
 import { parsePluginData, type PluginData } from "./utils/plugin-data";
+import type { BrowserSessionSnapshot } from "./types";
 import {
 	buildWebpageFileContent,
 	pageNoteExtension,
@@ -28,6 +29,7 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 	settings: BrowserPluginSettings = { ...DEFAULT_SETTINGS };
 	historyManager = new HistoryManager();
 	bookmarkManager = new BookmarkManager();
+	private browserSession: BrowserSessionSnapshot | null = null;
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -59,6 +61,15 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 		registerCommands(this);
 		this.addSettingTab(new BrowserSettingTab(this.app, this));
 
+		this.app.workspace.onLayoutReady(() => {
+			if (!this.settings.restoreSessionOnStartup) return;
+			const session = this.getBrowserSession();
+			if (!session || session.tabs.length === 0) return;
+			if (this.app.workspace.getLeavesOfType(BROWSER_VIEW_TYPE).length === 0) {
+				void this.activateBrowserView();
+			}
+		});
+
 		this.registerEvent(
 			this.app.vault.on("modify", (file) => {
 				if (!this.settings.refreshOnSave) return;
@@ -84,6 +95,12 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 	}
 
 	onunload(): void {
+		for (const leaf of this.app.workspace.getLeavesOfType(BROWSER_VIEW_TYPE)) {
+			if (leaf.view instanceof BrowserView) {
+				leaf.view.persistSessionNow();
+			}
+		}
+		void this.savePersistedData();
 		this.app.workspace.getLeavesOfType(BROWSER_VIEW_TYPE).forEach((leaf) => leaf.detach());
 		this.app.workspace.getLeavesOfType(WEB_PAGE_VIEW_TYPE).forEach((leaf) => leaf.detach());
 	}
@@ -103,13 +120,33 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 		const data = await readPluginData(this);
 		if (data.history) this.historyManager.deserialize(data.history);
 		if (data.bookmarks) this.bookmarkManager.deserialize(data.bookmarks);
+		this.browserSession = data.session ?? null;
 	}
 
 	async savePersistedData(): Promise<void> {
 		const data = await readPluginData(this);
 		data.history = this.historyManager.serialize();
 		data.bookmarks = this.bookmarkManager.serialize();
+		if (this.browserSession) {
+			data.session = this.browserSession;
+		}
 		await this.saveData(data);
+	}
+
+	async saveBrowserSession(snapshot: BrowserSessionSnapshot): Promise<void> {
+		this.browserSession = {
+			...snapshot,
+			savedAt: Date.now(),
+		};
+		const data = await readPluginData(this);
+		data.session = this.browserSession;
+		data.history = this.historyManager.serialize();
+		data.bookmarks = this.bookmarkManager.serialize();
+		await this.saveData(data);
+	}
+
+	getBrowserSession(): BrowserSessionSnapshot | null {
+		return this.browserSession;
 	}
 
 	async activateBrowserView(): Promise<BrowserView | null> {

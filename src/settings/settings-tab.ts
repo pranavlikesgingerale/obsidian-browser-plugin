@@ -98,6 +98,11 @@ export class BrowserSettingTab extends PluginSettingTab {
 				"Where .webpage notes are saved (vault-relative)",
 				"pageNotesFolder",
 			),
+			toggleSetting(
+				"Restore session on startup",
+				"Reopen your last browser tabs when you launch Obsidian or open the browser",
+				"restoreSessionOnStartup",
+			),
 			settingsGroup("Security", [
 				toggleSetting(
 					"Enable JavaScript",
