@@ -80,8 +80,8 @@ export class Toolbar {
 		const buttons = this.el.querySelectorAll(".local-html-browser-nav-group button");
 		const backBtn = buttons[0];
 		const forwardBtn = buttons[1];
-		if (backBtn instanceof HTMLButtonElement) backBtn.disabled = !canBack;
-		if (forwardBtn instanceof HTMLButtonElement) forwardBtn.disabled = !canForward;
+		if (backBtn?.instanceOf(HTMLButtonElement)) backBtn.disabled = !canBack;
+		if (forwardBtn?.instanceOf(HTMLButtonElement)) forwardBtn.disabled = !canForward;
 	}
 
 	private createNavButton(

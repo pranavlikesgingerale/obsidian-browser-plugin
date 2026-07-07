@@ -1,22 +1,15 @@
-import { App, TFile, parseYaml } from "obsidian";
+import { App, TFile, parseYaml, FileSystemAdapter } from "obsidian";
 import type { PageNoteData } from "../types";
 import { pathToFileUrl } from "../utils/paths";
-import { getPath } from "../utils/electron";
 
 const PAGE_NOTE_EXTENSION = "webpage";
 
-interface VaultPathAdapter {
-	getFullPath?(path: string): string;
-	getResourcePath?(path: string): string;
-	basePath?: string;
-}
-
-function getVaultPathAdapter(app: App): VaultPathAdapter {
-	return app.vault.adapter as VaultPathAdapter;
-}
-
 function readFrontmatterString(value: unknown): string | undefined {
 	return typeof value === "string" ? value : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /** Whether a vault file should open as a live web page tab. */
@@ -65,14 +58,13 @@ export function parseWebpageFile(content: string, fallbackTitle: string): PageNo
 		if (end !== -1) {
 			const yaml = trimmed.slice(3, end).trim();
 			try {
-				const parsed = parseYaml(yaml);
-				if (parsed && typeof parsed === "object") {
-					const record = parsed as Record<string, unknown>;
-					const url = readFrontmatterString(record.url);
+				const parsed: unknown = parseYaml(yaml);
+				if (isRecord(parsed)) {
+					const url = readFrontmatterString(parsed.url);
 					if (url) {
 						return {
 							url,
-							title: readFrontmatterString(record.title) || fallbackTitle,
+							title: readFrontmatterString(parsed.title) || fallbackTitle,
 						};
 					}
 				}
@@ -98,9 +90,9 @@ export function buildWebpageFileContent(url: string, title: string): string {
 
 /** Resolve a vault HTML file to a loadable URL. */
 export function vaultFileToUrl(app: App, file: TFile): string | null {
-	const adapter = getVaultPathAdapter(app);
+	const adapter = app.vault.adapter;
 
-	if (adapter.getFullPath) {
+	if (adapter instanceof FileSystemAdapter) {
 		try {
 			const fullPath = adapter.getFullPath(file.path);
 			if (fullPath) return pathToFileUrl(fullPath);
@@ -109,17 +101,10 @@ export function vaultFileToUrl(app: App, file: TFile): string | null {
 		}
 	}
 
-	if (adapter.getResourcePath) {
-		try {
-			return adapter.getResourcePath(file.path);
-		} catch {
-			// continue
-		}
-	}
-
-	const pathMod = getPath();
-	if (pathMod && adapter.basePath) {
-		return pathToFileUrl(pathMod.join(adapter.basePath, file.path));
+	try {
+		return adapter.getResourcePath(file.path);
+	} catch {
+		// continue
 	}
 
 	return null;

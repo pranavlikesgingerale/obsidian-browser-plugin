@@ -6,6 +6,7 @@ import type {
 } from "../types";
 import { getElectron, hasNodeRequire } from "../utils/electron";
 import { getActiveDocument } from "../utils/dom";
+import { readProcessVersion } from "../utils/node-modules";
 import { Logger } from "../utils/logger";
 
 const log = new Logger("compatibility");
@@ -30,10 +31,9 @@ export function detectCompatibility(app?: App): CompatibilityInfo {
 	let chromiumVersion = "unknown";
 	let nodeVersion = "unknown";
 	try {
-		const versions = process.versions;
-		electronVersion = versions.electron ?? "unknown";
-		chromiumVersion = versions.chrome ?? "unknown";
-		nodeVersion = versions.node ?? "unknown";
+		electronVersion = readProcessVersion("electron");
+		chromiumVersion = readProcessVersion("chrome");
+		nodeVersion = readProcessVersion("node");
 	} catch {
 		limitations.push("process.versions unavailable — running in restricted context.");
 	}

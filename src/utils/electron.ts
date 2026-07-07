@@ -2,6 +2,10 @@
  * Safe access to Electron / Node APIs from within the desktop renderer process.
  */
 
+import { toFsModule, toPathModule, type FsModule, type PathModule } from "./node-modules";
+
+export type { FsModule, PathModule };
+
 export interface ElectronShell {
 	openPath(path: string): Promise<string>;
 	openExternal(url: string): Promise<void>;
@@ -28,10 +32,6 @@ export interface ElectronModule {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;
-}
-
-function hasFunction(obj: Record<string, unknown>, key: string): boolean {
-	return typeof obj[key] === "function";
 }
 
 /** Load a Node/Electron module via Obsidian's window.require. */
@@ -74,17 +74,11 @@ export function hasNodeRequire(): boolean {
 }
 
 /** Get Node.js fs module when available. */
-export function getFs(): typeof import("fs") | null {
-	const mod = nodeRequire("fs");
-	if (!isRecord(mod)) return null;
-	if (!hasFunction(mod, "readFileSync") || !hasFunction(mod, "statSync")) return null;
-	return mod as unknown as typeof import("fs");
+export function getFs(): FsModule | null {
+	return toFsModule(nodeRequire("fs"));
 }
 
 /** Get Node.js path module when available. */
-export function getPath(): typeof import("path") | null {
-	const mod = nodeRequire("path");
-	if (!isRecord(mod)) return null;
-	if (!hasFunction(mod, "join") || !hasFunction(mod, "resolve")) return null;
-	return mod as unknown as typeof import("path");
+export function getPath(): PathModule | null {
+	return toPathModule(nodeRequire("path"));
 }

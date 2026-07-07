@@ -32,8 +32,8 @@ function parsePluginData(raw: unknown): PluginData {
 	const record = raw as Record<string, unknown>;
 	const data: PluginData = {};
 
-	if (record.settings && typeof record.settings === "object") {
-		data.settings = record.settings as Partial<BrowserPluginSettings>;
+	if (record.settings && typeof record.settings === "object" && !Array.isArray(record.settings)) {
+		data.settings = { ...(record.settings as Partial<BrowserPluginSettings>) };
 	}
 	if (Array.isArray(record.history)) {
 		data.history = record.history as HistoryEntry[];
@@ -148,7 +148,7 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 			await leaf.setViewState({ type: BROWSER_VIEW_TYPE, active: true });
 		}
 
-		workspace.revealLeaf(leaf);
+		await workspace.revealLeaf(leaf);
 		return leaf.view instanceof BrowserView ? leaf.view : null;
 	}
 
@@ -161,7 +161,7 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 			state: { url, title: title ?? "", sourcePath },
 			active: true,
 		});
-		this.app.workspace.revealLeaf(leaf);
+		await this.app.workspace.revealLeaf(leaf);
 		return leaf.view instanceof WebPageView ? leaf.view : null;
 	}
 

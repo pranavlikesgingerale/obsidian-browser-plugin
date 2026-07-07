@@ -1,103 +1,83 @@
-# Local HTML Browser v1.0.2
+# Release title
 
-Run local `file://` HTML apps inside Obsidian — built for SPAs, hash routes, and offline tools like a personal task dashboard.
-
-**Desktop only** · Requires Obsidian 1.7.2+
-
----
-
-## Install
-
-1. Download `main.js`, `manifest.json`, and `styles.css` from this release
-2. Put them in `.obsidian/plugins/local-html-browser/`
-3. Enable **Local HTML Browser** under Settings → Community plugins
-4. Click the globe icon in the ribbon
-
-Or build from source:
-
-```bash
-npm install
-npm run build
-```
-
----
-
-## What's included
-
-### Full browser view
-- Address bar, back/forward, reload, hard reload, stop, home
-- Multiple tabs — new, close, duplicate, reopen closed
-- Open file / open folder
-- Bookmarks and history
-- DevTools toggle (webview mode)
-- Auto-refresh when files change
-- Security settings: JS toggle, local file access, sandbox, incognito, block external URLs
-
-### Page tabs
-- Open a page as its own tab — live web content, minimal chrome
-- Save a page as a `.webpage` vault note
-- Markdown frontmatter support (`browser-page: true`)
-- Open vault `.html` files as live pages
-
-### Engines
-- **Webview** — closest to Chrome, proper `file://` + SPA support
-- **Iframe fallback** — used automatically if webview doesn't respond
-
-Compatibility report under Settings → Local HTML Browser.
-
----
-
-## Example
+**Use this as the GitHub release title (must include the version):**
 
 ```
-file:///C:/path/to/your/app/index.html#/today
+Local HTML Browser 1.0.2
 ```
 
-Set as home URL in settings, or save as a `.webpage` note:
+**Tag:** `1.0.2`  
+**Requires Obsidian 1.7.2+** · Desktop only
 
-```yaml
----
-url: file:///C:/path/to/your/app/index.html#/today
-title: Daily Tasks
----
-```
+Attach `main.js`, `manifest.json`, and `styles.css` from this release.
 
 ---
 
-## Known limitations
+## Changes in 1.0.2
 
-- Webview depends on your Obsidian/Electron build — if you see **Iframe Fallback**, bundled apps may not work fully
-- Iframe mode can't attach DevTools the same way webview can
-- Mobile is not supported
-- Direct filesystem access via Node `fs` is intentional for local HTML apps outside the vault
+This release addresses Obsidian community plugin review feedback from 1.0.1. No new user-facing features — mostly compliance, stability, and code quality.
+
+### Requirements
+
+- Raised `minAppVersion` from **1.5.0** to **1.7.2** (uses `getActiveViewOfType`, `getLeaf(false)`, and related workspace APIs)
+
+### Obsidian API compliance
+
+- Replaced `navigator.platform` OS detection with Obsidian's **`Platform`** API
+- Replaced deprecated **`activeLeaf`** usage with **`getActiveViewOfType`** and **`getLeaf(false)`**
+- Settings section titles now use **`Setting().setHeading()`** instead of raw `<h2>` elements
+- Removed inline **`element.style`** assignments; UI state is driven by CSS classes (`is-loading`, `is-visible`, `is-hidden`, engine container classes)
+- Switched to **`window.requestAnimationFrame()`** for popout-window compatibility
+- Switched DOM creation to **`activeDocument`** (via a shared `getActiveDocument()` helper) instead of bare `document`
+- Floating promises are explicitly handled with **`void`** where fire-and-forget is intentional
+
+### Source code / lint fixes
+
+- Removed all **`eslint-disable @typescript-eslint/no-explicit-any`** directives
+- Rewrote Electron/Node access (`electron.ts`) with **`nodeRequire()`** and runtime validation instead of unchecked `window.require()` casts
+- Added **`parsePluginData()`** so plugin saved data is parsed safely from `loadData()`
+- Added **`parseWebPageState()`** for web page tab state instead of unchecked type assertions
+- Safer frontmatter and vault adapter parsing in page notes
+- Webview event listeners no longer use unnecessary **`as EventListener`** casts
+- Settings boolean toggles use a typed **`BooleanSettingKey`** instead of `as boolean` casts
+- **`FileReader.result`** is checked with `typeof` before use
+- Compatibility report **Refresh** button updates the report in place instead of re-running full `display()`
+
+### CSS
+
+- Removed **`!important`** overrides on view containers
+- Removed **`scrollbar-width`** (partially unsupported on older Obsidian builds)
+- Loading indicator, page error banner, and status bar visibility handled entirely in CSS
+
+### Build tooling
+
+- Removed deprecated **`builtin-modules`** npm package
+- Esbuild externals now use Node's built-in **`builtinModules`** from `node:module`
+
+### Unchanged (expected review warnings)
+
+- Direct **`fs`** access remains intentional — required for loading local `file://` HTML apps outside the vault
+- GitHub artifact attestations not included in this release
 
 ---
 
-## Files in this release
+## Upgrade from 1.0.1
 
-| File | Required |
-|------|----------|
-| `main.js` | Yes |
-| `manifest.json` | Yes |
-| `styles.css` | Yes |
+1. Download the three files from this release
+2. Replace everything in `.obsidian/plugins/local-html-browser/`
+3. Reload Obsidian (or disable/re-enable the plugin)
 
-**Release name must include the version:** e.g. `Local HTML Browser 1.0.2`
+If you were on Obsidian **1.5.x–1.7.1**, update Obsidian to **1.7.2+** before installing.
 
 ---
 
-## Changelog
-
-### 1.0.2
-- Obsidian review fixes: Platform API, CSS classes instead of inline styles, settings headings, typed Electron helpers
-- Raised `minAppVersion` to 1.7.2 for modern workspace APIs
-- Popout-safe `activeDocument` usage, promise handling cleanup
-- Removed deprecated `builtin-modules` dependency; safer `loadData` parsing
-- Webview event handlers without unnecessary casts; settings compat refresh without full re-render
+## Previous releases
 
 ### 1.0.1
+
 - First publishable release under plugin ID `local-html-browser`
-- Full browser + page tab views
+- Full browser view + standalone page tabs
 - `.webpage` vault notes and save-as-note
-- Webview with automatic iframe fallback
+- Webview engine with automatic iframe fallback
 - Live reload on file watch and vault save
-- Compatibility detection in settings
+- Compatibility report in settings
