@@ -51,7 +51,6 @@ export class BrowserManager {
 			if (webview.mount(container)) {
 				this.engine = webview;
 				this.engineType = "webview";
-				log.info("Using webview engine.");
 				return "webview";
 			}
 		}
@@ -117,7 +116,6 @@ export class BrowserManager {
 		if (iframe.mount(container)) {
 			this.engine = iframe;
 			this.engineType = "iframe-blob";
-			log.info("Using iframe engine.");
 			return "iframe-blob";
 		}
 

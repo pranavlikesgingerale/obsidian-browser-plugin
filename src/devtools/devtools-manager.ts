@@ -28,7 +28,7 @@ export class DevToolsManager {
 					log.warn(prefix, msg.message);
 					break;
 				default:
-					log.info(prefix, msg.message);
+					break;
 			}
 		}
 	}

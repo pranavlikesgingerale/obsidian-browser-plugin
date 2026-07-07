@@ -1,5 +1,5 @@
 import { setIcon } from "obsidian";
-import { getActiveDocument } from "../utils/dom";
+import { createRootDiv } from "../utils/dom";
 
 /** Toolbar button definitions and factory. */
 export interface ToolbarCallbacks {
@@ -26,8 +26,7 @@ export class Toolbar {
 	private bookmarkBtn: HTMLButtonElement;
 
 	constructor(callbacks: ToolbarCallbacks) {
-		const doc = getActiveDocument();
-		this.el = doc.createElement("div");
+		this.el = createRootDiv();
 		this.el.className = "local-html-browser-toolbar";
 
 		const navGroup = this.el.createDiv({ cls: "local-html-browser-nav-group" });

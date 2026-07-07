@@ -1,7 +1,7 @@
 import type { BrowserEngineEvents, BrowserPluginSettings } from "../types";
 import { buildWebPreferences } from "./compatibility";
 import { Logger } from "../utils/logger";
-import { getActiveDocument } from "../utils/dom";
+import { createElement } from "../utils/dom";
 
 const log = new Logger("webview");
 
@@ -51,8 +51,7 @@ export class WebviewEngine {
 			this.container = container;
 			container.addClass("local-html-browser-engine-container");
 
-			const doc = getActiveDocument();
-			const webview = doc.createElement("webview") as WebviewElement;
+			const webview = createElement("webview") as WebviewElement;
 			webview.className = "local-html-browser-webview";
 			webview.setAttribute("allowpopups", "");
 			webview.setAttribute("partition", this.partition);
@@ -67,7 +66,7 @@ export class WebviewEngine {
 
 			window.requestAnimationFrame(() => this.syncWebviewSize());
 
-			log.info("Webview mounted.");
+			log.warn("Webview mounted.");
 			return true;
 		} catch (e) {
 			log.error("Failed to mount webview", e);
@@ -292,8 +291,8 @@ export class WebviewEngine {
 }
 
 function getWebviewEventValue(event: Event, key: string): unknown {
-	if (key in event) {
-		return (event as unknown as Record<string, unknown>)[key];
+	if (Object.prototype.hasOwnProperty.call(event, key)) {
+		return Reflect.get(event, key);
 	}
 	return undefined;
 }

@@ -1,4 +1,4 @@
-import { getActiveDocument } from "../utils/dom";
+import { createRootDiv } from "../utils/dom";
 import type { BrowserEngineType } from "../types";
 
 /** Bottom status bar showing page info and engine type. */
@@ -8,8 +8,7 @@ export class StatusBar {
 	private engineBadge: HTMLElement;
 
 	constructor() {
-		const doc = getActiveDocument();
-		this.el = doc.createElement("div");
+		this.el = createRootDiv();
 		this.el.className = "local-html-browser-status-bar";
 		this.statusText = this.el.createSpan({ cls: "local-html-browser-status-text", text: "Ready" });
 		this.engineBadge = this.el.createSpan({ cls: "local-html-browser-engine-badge" });

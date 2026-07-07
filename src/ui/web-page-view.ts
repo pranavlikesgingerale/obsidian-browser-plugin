@@ -105,8 +105,12 @@ export class WebPageView extends ItemView {
 			onLoadingStateChange: () => {},
 			onCanNavigateChange: () => {},
 			onConsoleMessage: (msg) => {
-				if (this.plugin.settings.forwardConsoleLogs) {
-					console.log(`[Web Page:${msg.level}]`, msg.message);
+				if (!this.plugin.settings.forwardConsoleLogs) return;
+				const prefix = `[Web Page:${msg.level}] ${msg.message}`;
+				if (msg.level === "error") {
+					console.error(prefix);
+				} else if (msg.level === "warn") {
+					console.warn(prefix);
 				}
 			},
 			onNewWindow: (url) => this.loadPage(url),

@@ -1,5 +1,5 @@
 import { setIcon } from "obsidian";
-import { getActiveDocument } from "../utils/dom";
+import { createRootDiv } from "../utils/dom";
 import type { BrowserTab } from "../types";
 
 export interface TabBarCallbacks {
@@ -15,15 +15,14 @@ export class TabBar {
 	private tabListEl: HTMLElement;
 
 	constructor(private callbacks: TabBarCallbacks) {
-		const doc = getActiveDocument();
-		this.el = doc.createElement("div");
+		this.el = createRootDiv();
 		this.el.className = "local-html-browser-tab-bar";
 
 		this.tabListEl = this.el.createDiv({ cls: "local-html-browser-tab-list" });
 
 		const newTabBtn = this.el.createEl("button", {
 			cls: "local-html-browser-tab-new",
-			attr: { title: "New Tab" },
+			attr: { title: "New tab" },
 		});
 		setIcon(newTabBtn, "plus");
 		newTabBtn.addEventListener("click", () => callbacks.onNewTab());
@@ -48,7 +47,7 @@ export class TabBar {
 
 			const closeBtn = tabEl.createEl("button", {
 				cls: "local-html-browser-tab-close",
-				attr: { title: "Close Tab" },
+				attr: { title: "Close tab" },
 			});
 			setIcon(closeBtn, "x");
 			closeBtn.addEventListener("click", (e) => {

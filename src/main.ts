@@ -4,8 +4,6 @@ import {
 	WEB_PAGE_VIEW_TYPE,
 	DEFAULT_SETTINGS,
 	type BrowserPluginSettings,
-	type Bookmark,
-	type HistoryEntry,
 } from "./types";
 import { BrowserView } from "./ui/browser-view";
 import { WebPageView } from "./ui/web-page-view";
@@ -14,35 +12,12 @@ import { HistoryManager } from "./history/history-manager";
 import { BookmarkManager } from "./bookmarks/bookmark-manager";
 import { registerCommands } from "./commands/commands";
 import { detectCompatibility } from "./browser/compatibility";
-import { mainLogger } from "./utils/logger";
+import { parsePluginData, type PluginData } from "./utils/plugin-data";
 import {
 	buildWebpageFileContent,
 	pageNoteExtension,
 	parsePageNote,
 } from "./page-notes/page-notes";
-
-interface PluginData {
-	settings?: Partial<BrowserPluginSettings>;
-	history?: HistoryEntry[];
-	bookmarks?: Bookmark[];
-}
-
-function parsePluginData(raw: unknown): PluginData {
-	if (!raw || typeof raw !== "object") return {};
-	const record = raw as Record<string, unknown>;
-	const data: PluginData = {};
-
-	if (record.settings && typeof record.settings === "object" && !Array.isArray(record.settings)) {
-		data.settings = { ...(record.settings as Partial<BrowserPluginSettings>) };
-	}
-	if (Array.isArray(record.history)) {
-		data.history = record.history as HistoryEntry[];
-	}
-	if (Array.isArray(record.bookmarks)) {
-		data.bookmarks = record.bookmarks as Bookmark[];
-	}
-	return data;
-}
 
 async function readPluginData(plugin: Plugin): Promise<PluginData> {
 	return parsePluginData(await plugin.loadData());
@@ -59,11 +34,10 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 		await this.loadPersistedData();
 
 		const compat = detectCompatibility(this.app);
-		mainLogger.info("Compatibility:", compat);
 
 		if (!compat.webviewAvailable) {
 			new Notice(
-				"Local HTML Browser: webview unavailable — using iframe fallback. See settings for details.",
+				"Local HTML browser: webview unavailable — using iframe fallback. See settings for details.",
 				10000,
 			);
 		}
@@ -78,7 +52,7 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 			}),
 		);
 
-		this.addRibbonIcon("globe", "Open Local HTML Browser", () => {
+		this.addRibbonIcon("globe", "Open local HTML browser", () => {
 			void this.activateBrowserView();
 		});
 
@@ -107,7 +81,6 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 			}),
 		);
 
-		mainLogger.info("Local HTML Browser plugin loaded.");
 	}
 
 	onunload(): void {

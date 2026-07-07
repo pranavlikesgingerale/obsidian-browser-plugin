@@ -2,7 +2,7 @@ import type { BrowserEngineEvents, BrowserPluginSettings } from "../types";
 import { createBlobUrl, resolveLocalPath } from "../utils/file-protocol";
 import { normalizeInputToUrl } from "../utils/paths";
 import { Logger } from "../utils/logger";
-import { getActiveDocument } from "../utils/dom";
+import { createElement } from "../utils/dom";
 
 const log = new Logger("iframe-fallback");
 
@@ -33,8 +33,7 @@ export class IframeFallbackEngine {
 			this.container = container;
 			container.addClass("local-html-browser-engine-container");
 
-			const doc = getActiveDocument();
-			const iframe = doc.createElement("iframe");
+			const iframe = createElement("iframe") as HTMLIFrameElement;
 			iframe.className = "local-html-browser-iframe";
 
 			const sandbox = ["allow-scripts", "allow-same-origin", "allow-forms", "allow-popups", "allow-downloads"];

@@ -4,8 +4,8 @@ import type {
 	BrowserPluginSettings,
 	CompatibilityInfo,
 } from "../types";
-import { getElectron, hasNodeRequire } from "../utils/electron";
-import { getActiveDocument } from "../utils/dom";
+import { hasNodeRequire, hasElectronModule } from "../utils/electron";
+import { getActiveDocument, createElement } from "../utils/dom";
 import { readProcessVersion } from "../utils/node-modules";
 import { Logger } from "../utils/logger";
 
@@ -85,8 +85,8 @@ function checkWebviewAvailability(): { available: boolean; reason: string } {
 	}
 
 	try {
-		const doc = getActiveDocument();
-		const test = doc.createElement("webview");
+		getActiveDocument();
+		const test = createElement("webview");
 		if (test.tagName.toLowerCase() !== "webview") {
 			return {
 				available: false,
@@ -94,7 +94,7 @@ function checkWebviewAvailability(): { available: boolean; reason: string } {
 			};
 		}
 
-		const electron = getElectron();
+		const electron = hasElectronModule();
 		if (!electron) {
 			return {
 				available: false,
@@ -102,7 +102,7 @@ function checkWebviewAvailability(): { available: boolean; reason: string } {
 			};
 		}
 
-		log.info("Webview element creation succeeded — webview engine available.");
+		log.warn("Webview element creation succeeded — webview engine available.");
 		return { available: true, reason: "Electron <webview> tag is available." };
 	} catch (e) {
 		return {

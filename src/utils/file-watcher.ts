@@ -35,14 +35,12 @@ export class FileWatcher {
 		}
 
 		try {
-			const watcher = fs.watch(filePath, { recursive: true }, (_eventType, filename) => {
-				log.debug(`File changed: ${filename ?? filePath}`);
+			const watcher = fs.watch(filePath, { recursive: true }, () => {
 				this.onChangeCallback?.();
 			});
 
 			this.watchers.push(watcher);
 			this.watchedPath = filePath;
-			log.info(`Watching: ${filePath}`);
 		} catch {
 			// May fail for directories on some platforms without recursive support
 			try {

@@ -1,5 +1,5 @@
 import { getElectron } from "../utils/electron";
-import { getActiveDocument } from "../utils/dom";
+import { createElement } from "../utils/dom";
 
 /**
  * Simple download manager tracking browser download events.
@@ -44,8 +44,7 @@ export async function openFileDialog(extensions?: string[]): Promise<string | nu
 	}
 
 	return new Promise((resolve) => {
-		const doc = getActiveDocument();
-		const input = doc.createElement("input");
+		const input = createElement("input") as HTMLInputElement;
 		input.type = "file";
 		input.accept = ".html,.htm,.svg,.xml,.txt,.md,.markdown";
 		input.onchange = () => {

@@ -98,7 +98,7 @@ export function registerCommands(plugin: LocalHtmlBrowserPlugin): void {
 
 	plugin.addCommand({
 		id: "toggle-devtools",
-		name: "Browser: Toggle DevTools",
+		name: "Browser: Toggle devtools",
 		checkCallback: (checking) => {
 			const view = plugin.getActiveBrowserView();
 			if (!view) return false;
