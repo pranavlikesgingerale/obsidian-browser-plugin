@@ -1,4 +1,5 @@
 import { setIcon } from "obsidian";
+import { getActiveDocument } from "../utils/dom";
 
 /** Toolbar button definitions and factory. */
 export interface ToolbarCallbacks {
@@ -25,7 +26,8 @@ export class Toolbar {
 	private bookmarkBtn: HTMLButtonElement;
 
 	constructor(callbacks: ToolbarCallbacks) {
-		this.el = document.createElement("div");
+		const doc = getActiveDocument();
+		this.el = doc.createElement("div");
 		this.el.className = "local-html-browser-toolbar";
 
 		const navGroup = this.el.createDiv({ cls: "local-html-browser-nav-group" });
@@ -39,7 +41,6 @@ export class Toolbar {
 
 		const urlBar = this.el.createDiv({ cls: "local-html-browser-url-bar" });
 		this.loadingIndicator = urlBar.createDiv({ cls: "local-html-browser-loading-indicator" });
-		this.loadingIndicator.style.display = "none";
 
 		this.urlInput = urlBar.createEl("input", {
 			type: "text",
@@ -68,7 +69,6 @@ export class Toolbar {
 	}
 
 	setLoading(loading: boolean): void {
-		this.loadingIndicator.style.display = loading ? "block" : "none";
 		this.el.toggleClass("is-loading", loading);
 	}
 
@@ -78,8 +78,10 @@ export class Toolbar {
 
 	setNavState(canBack: boolean, canForward: boolean): void {
 		const buttons = this.el.querySelectorAll(".local-html-browser-nav-group button");
-		if (buttons[0]) (buttons[0] as HTMLButtonElement).disabled = !canBack;
-		if (buttons[1]) (buttons[1] as HTMLButtonElement).disabled = !canForward;
+		const backBtn = buttons[0];
+		const forwardBtn = buttons[1];
+		if (backBtn instanceof HTMLButtonElement) backBtn.disabled = !canBack;
+		if (forwardBtn instanceof HTMLButtonElement) forwardBtn.disabled = !canForward;
 	}
 
 	private createNavButton(

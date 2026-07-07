@@ -1,5 +1,5 @@
 /**
- * Safe access to Electron APIs from within Obsidian's renderer process.
+ * Safe access to Electron / Node APIs from within the desktop renderer process.
  */
 
 export interface ElectronShell {
@@ -20,30 +20,54 @@ export interface ElectronIpcRenderer {
 export interface ElectronModule {
 	shell?: ElectronShell;
 	ipcRenderer?: ElectronIpcRenderer;
+	dialog?: ElectronDialog;
 	remote?: {
 		dialog?: ElectronDialog;
 	};
 }
 
-/** Attempt to load Electron module via Obsidian's window.require. */
-export function getElectron(): ElectronModule | null {
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+function hasFunction(obj: Record<string, unknown>, key: string): boolean {
+	return typeof obj[key] === "function";
+}
+
+/** Load a Node/Electron module via Obsidian's window.require. */
+export function nodeRequire(moduleName: string): unknown {
 	try {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const win = window as any;
-		if (typeof win.require === "function") {
-			return win.require("electron") as ElectronModule;
+		if (typeof window.require === "function") {
+			return window.require(moduleName);
 		}
 	} catch {
-		// Electron not available (mobile or restricted environment)
+		// Module unavailable (mobile or restricted environment)
 	}
-	return null;
+	return undefined;
+}
+
+/** Attempt to load Electron module via Obsidian's window.require. */
+export function getElectron(): ElectronModule | null {
+	const mod = nodeRequire("electron");
+	if (!isRecord(mod)) return null;
+
+	const remote = isRecord(mod.remote) ? mod.remote : undefined;
+	return {
+		shell: isRecord(mod.shell) ? (mod.shell as unknown as ElectronShell) : undefined,
+		ipcRenderer: isRecord(mod.ipcRenderer) ? (mod.ipcRenderer as unknown as ElectronIpcRenderer) : undefined,
+		dialog: isRecord(mod.dialog) ? (mod.dialog as unknown as ElectronDialog) : undefined,
+		remote: remote
+			? {
+					dialog: isRecord(remote.dialog) ? (remote.dialog as unknown as ElectronDialog) : undefined,
+				}
+			: undefined,
+	};
 }
 
 /** Check whether Node.js require is available in the plugin context. */
 export function hasNodeRequire(): boolean {
 	try {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		return typeof (window as any).require === "function";
+		return typeof window.require === "function";
 	} catch {
 		return false;
 	}
@@ -51,20 +75,16 @@ export function hasNodeRequire(): boolean {
 
 /** Get Node.js fs module when available. */
 export function getFs(): typeof import("fs") | null {
-	try {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		return (window as any).require("fs") as typeof import("fs");
-	} catch {
-		return null;
-	}
+	const mod = nodeRequire("fs");
+	if (!isRecord(mod)) return null;
+	if (!hasFunction(mod, "readFileSync") || !hasFunction(mod, "statSync")) return null;
+	return mod as unknown as typeof import("fs");
 }
 
 /** Get Node.js path module when available. */
 export function getPath(): typeof import("path") | null {
-	try {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		return (window as any).require("path") as typeof import("path");
-	} catch {
-		return null;
-	}
+	const mod = nodeRequire("path");
+	if (!isRecord(mod)) return null;
+	if (!hasFunction(mod, "join") || !hasFunction(mod, "resolve")) return null;
+	return mod as unknown as typeof import("path");
 }

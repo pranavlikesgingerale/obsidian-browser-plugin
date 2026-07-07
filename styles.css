@@ -1,10 +1,26 @@
 /* Local HTML Browser plugin styles */
 
+.workspace-leaf-content .local-html-browser-view-container,
+.workspace-leaf-content .local-html-browser-page-view {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	padding: 0;
+	overflow: hidden;
+}
+
+.local-html-browser-engine-container {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
+
 .local-html-browser-view-container {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
-	padding: 0 !important;
 	overflow: hidden;
 }
 
@@ -98,6 +114,7 @@
 }
 
 .local-html-browser-loading-indicator {
+	display: none;
 	position: absolute;
 	left: 0;
 	bottom: 0;
@@ -118,6 +135,10 @@
 	100% { transform: translateX(100%); }
 }
 
+.local-html-browser-toolbar.is-loading .local-html-browser-loading-indicator {
+	display: block;
+}
+
 .local-html-browser-toolbar.is-loading .local-html-browser-url-input {
 	border-color: var(--interactive-accent);
 }
@@ -136,7 +157,6 @@
 	display: flex;
 	flex: 1;
 	overflow-x: auto;
-	scrollbar-width: thin;
 }
 
 .local-html-browser-tab {
@@ -288,6 +308,10 @@
 	min-height: 22px;
 }
 
+.local-html-browser-status-bar.is-hidden {
+	display: none;
+}
+
 .local-html-browser-status-text {
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -323,6 +347,11 @@
 .local-html-browser-compat-report {
 	max-height: 300px;
 	overflow-y: auto;
+	white-space: pre-wrap;
+	font-size: 0.85em;
+	padding: 1rem;
+	background: var(--background-secondary);
+	border-radius: 4px;
 }
 
 /* Standalone web page tab */
@@ -330,7 +359,6 @@
 	display: flex;
 	flex-direction: column;
 	height: 100%;
-	padding: 0 !important;
 	overflow: hidden;
 }
 
@@ -374,9 +402,14 @@
 }
 
 .local-html-browser-page-status {
+	display: none;
 	padding: 8px 12px;
 	background: var(--background-modifier-error);
 	color: var(--text-error);
 	font-size: 12px;
 	flex-shrink: 0;
+}
+
+.local-html-browser-page-status.is-visible {
+	display: block;
 }

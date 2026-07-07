@@ -21,9 +21,31 @@ import {
 	parsePageNote,
 } from "./page-notes/page-notes";
 
-interface PersistedData {
-	history: HistoryEntry[];
-	bookmarks: Bookmark[];
+interface PluginData {
+	settings?: Partial<BrowserPluginSettings>;
+	history?: HistoryEntry[];
+	bookmarks?: Bookmark[];
+}
+
+function parsePluginData(raw: unknown): PluginData {
+	if (!raw || typeof raw !== "object") return {};
+	const record = raw as Record<string, unknown>;
+	const data: PluginData = {};
+
+	if (record.settings && typeof record.settings === "object") {
+		data.settings = record.settings as Partial<BrowserPluginSettings>;
+	}
+	if (Array.isArray(record.history)) {
+		data.history = record.history as HistoryEntry[];
+	}
+	if (Array.isArray(record.bookmarks)) {
+		data.bookmarks = record.bookmarks as Bookmark[];
+	}
+	return data;
+}
+
+async function readPluginData(plugin: Plugin): Promise<PluginData> {
+	return parsePluginData(await plugin.loadData());
 }
 
 /** Local HTML Browser — Chromium browser for local file:// HTML apps. */
@@ -36,7 +58,7 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 		await this.loadSettings();
 		await this.loadPersistedData();
 
-		const compat = detectCompatibility();
+		const compat = detectCompatibility(this.app);
 		mainLogger.info("Compatibility:", compat);
 
 		if (!compat.webviewAvailable) {
@@ -57,7 +79,7 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 		);
 
 		this.addRibbonIcon("globe", "Open Local HTML Browser", () => {
-			this.activateBrowserView();
+			void this.activateBrowserView();
 		});
 
 		registerCommands(this);
@@ -94,24 +116,24 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 	}
 
 	async loadSettings(): Promise<void> {
-		const data = await this.loadData();
-		this.settings = { ...DEFAULT_SETTINGS, ...data?.settings };
+		const data = await readPluginData(this);
+		this.settings = { ...DEFAULT_SETTINGS, ...data.settings };
 	}
 
 	async saveSettings(): Promise<void> {
-		const data = (await this.loadData()) ?? {};
+		const data = await readPluginData(this);
 		data.settings = this.settings;
 		await this.saveData(data);
 	}
 
 	async loadPersistedData(): Promise<void> {
-		const data = (await this.loadData()) as PersistedData | null;
-		if (data?.history) this.historyManager.deserialize(data.history);
-		if (data?.bookmarks) this.bookmarkManager.deserialize(data.bookmarks);
+		const data = await readPluginData(this);
+		if (data.history) this.historyManager.deserialize(data.history);
+		if (data.bookmarks) this.bookmarkManager.deserialize(data.bookmarks);
 	}
 
 	async savePersistedData(): Promise<void> {
-		const data = ((await this.loadData()) ?? {}) as Record<string, unknown>;
+		const data = await readPluginData(this);
 		data.history = this.historyManager.serialize();
 		data.bookmarks = this.bookmarkManager.serialize();
 		await this.saveData(data);
@@ -122,25 +144,25 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 
 		let leaf = workspace.getLeavesOfType(BROWSER_VIEW_TYPE)[0];
 		if (!leaf) {
-			leaf = workspace.getLeaf("tab");
+			leaf = workspace.getLeaf(false);
 			await leaf.setViewState({ type: BROWSER_VIEW_TYPE, active: true });
 		}
 
 		workspace.revealLeaf(leaf);
-		return leaf.view as BrowserView;
+		return leaf.view instanceof BrowserView ? leaf.view : null;
 	}
 
 	async openWebPage(url: string, title?: string, sourcePath?: string): Promise<WebPageView | null> {
 		if (!url) return null;
 
-		const leaf = this.app.workspace.getLeaf("tab");
+		const leaf = this.app.workspace.getLeaf(false);
 		await leaf.setViewState({
 			type: WEB_PAGE_VIEW_TYPE,
 			state: { url, title: title ?? "", sourcePath },
 			active: true,
 		});
 		this.app.workspace.revealLeaf(leaf);
-		return leaf.view as unknown as WebPageView;
+		return leaf.view instanceof WebPageView ? leaf.view : null;
 	}
 
 	async savePageNote(url: string, title: string, folder?: string): Promise<TFile | null> {
@@ -168,18 +190,18 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 	}
 
 	getActiveBrowserView(): BrowserView | null {
-		const leaf = this.app.workspace.activeLeaf;
-		if (leaf?.view instanceof BrowserView) return leaf.view;
+		const active = this.app.workspace.getActiveViewOfType(BrowserView);
+		if (active) return active;
 
 		const leaves = this.app.workspace.getLeavesOfType(BROWSER_VIEW_TYPE);
-		if (leaves.length > 0) return leaves[0].view as BrowserView;
+		if (leaves.length > 0 && leaves[0].view instanceof BrowserView) {
+			return leaves[0].view;
+		}
 		return null;
 	}
 
 	getActiveWebPageView(): WebPageView | null {
-		const leaf = this.app.workspace.activeLeaf;
-		if (leaf?.view instanceof WebPageView) return leaf.view;
-		return null;
+		return this.app.workspace.getActiveViewOfType(WebPageView);
 	}
 
 	private async handleFileOpen(file: TFile): Promise<void> {
@@ -201,9 +223,9 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 		const data = await parsePageNote(this.app, file);
 		if (!data) return;
 
-		requestAnimationFrame(() => {
+		window.requestAnimationFrame(() => {
 			void (async () => {
-				const leaf = this.app.workspace.activeLeaf;
+				const leaf = this.app.workspace.getMostRecentLeaf();
 				if (!leaf) return;
 				await leaf.setViewState({
 					type: WEB_PAGE_VIEW_TYPE,

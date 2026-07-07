@@ -7,7 +7,9 @@ export function registerCommands(plugin: LocalHtmlBrowserPlugin): void {
 	plugin.addCommand({
 		id: "open-browser",
 		name: "Open browser",
-		callback: () => plugin.activateBrowserView(),
+		callback: () => {
+			void plugin.activateBrowserView();
+		},
 	});
 
 	plugin.addCommand({
@@ -140,7 +142,7 @@ export function registerCommands(plugin: LocalHtmlBrowserPlugin): void {
 				const title = view.getCurrentTitle();
 				if (url) {
 					plugin.bookmarkManager.addBookmark(url, title || url);
-					plugin.savePersistedData();
+					void plugin.savePersistedData();
 				}
 			}
 			return true;

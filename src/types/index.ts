@@ -171,3 +171,15 @@ export interface PageNoteData {
 	url: string;
 	title: string;
 }
+
+/** Parse persisted or in-flight web page view state. */
+export function parseWebPageState(state: unknown): WebPageState | null {
+	if (!state || typeof state !== "object") return null;
+	const record = state as Record<string, unknown>;
+	if (typeof record.url !== "string" || !record.url) return null;
+	return {
+		url: record.url,
+		title: typeof record.title === "string" ? record.title : "",
+		sourcePath: typeof record.sourcePath === "string" ? record.sourcePath : undefined,
+	};
+}

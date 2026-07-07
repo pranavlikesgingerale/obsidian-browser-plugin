@@ -1,47 +1,44 @@
+import { Platform, type App } from "obsidian";
 import type {
 	BrowserEngineType,
 	BrowserPluginSettings,
 	CompatibilityInfo,
 } from "../types";
 import { getElectron, hasNodeRequire } from "../utils/electron";
+import { getActiveDocument } from "../utils/dom";
 import { Logger } from "../utils/logger";
 
 const log = new Logger("compatibility");
 
+function getPlatformName(): string {
+	if (Platform.isWin) return "windows";
+	if (Platform.isMacOS) return "macos";
+	if (Platform.isLinux) return "linux";
+	if (Platform.isIosApp) return "ios";
+	if (Platform.isAndroidApp) return "android";
+	return "unknown";
+}
+
 /**
  * Detect runtime environment and determine the best available browser engine.
- * Never silently fails — always returns explicit capability info.
  */
-export function detectCompatibility(): CompatibilityInfo {
+export function detectCompatibility(app?: App): CompatibilityInfo {
 	const limitations: string[] = [];
+	const obsidianVersion = app?.version ?? "unknown";
 
-	// Obsidian version from global API
-	let obsidianVersion = "unknown";
-	try {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const app = (window as any).app;
-		if (app?.version) obsidianVersion = app.version as string;
-	} catch {
-		limitations.push("Could not detect Obsidian version.");
-	}
-
-	// Electron / Chromium / Node from process.versions
 	let electronVersion = "unknown";
 	let chromiumVersion = "unknown";
 	let nodeVersion = "unknown";
 	try {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const versions = (process as any).versions;
-		if (versions) {
-			electronVersion = versions.electron ?? "unknown";
-			chromiumVersion = versions.chrome ?? "unknown";
-			nodeVersion = versions.node ?? "unknown";
-		}
+		const versions = process.versions;
+		electronVersion = versions.electron ?? "unknown";
+		chromiumVersion = versions.chrome ?? "unknown";
+		nodeVersion = versions.node ?? "unknown";
 	} catch {
 		limitations.push("process.versions unavailable — running in restricted context.");
 	}
 
-	const platform = navigator.platform || "unknown";
+	const platform = getPlatformName();
 	const webviewCheck = checkWebviewAvailability();
 
 	if (!webviewCheck.available) {
@@ -77,20 +74,19 @@ export function detectCompatibility(): CompatibilityInfo {
 	};
 }
 
-/** Test whether <webview> can be created in the current Obsidian window. */
+/** Test whether <webview> can be created in the current window. */
 function checkWebviewAvailability(): { available: boolean; reason: string } {
 	if (!hasNodeRequire()) {
 		return {
 			available: false,
 			reason:
-				"Electron APIs unavailable. Obsidian mobile and restricted contexts do not support <webview>.",
+				"Electron APIs unavailable. Mobile and restricted contexts do not support <webview>.",
 		};
 	}
 
 	try {
-		const test = document.createElement("webview");
-		// In Electron with webviewTag enabled, webview has getWebContents method after attach
-		// We check if the element is a valid custom element
+		const doc = getActiveDocument();
+		const test = doc.createElement("webview");
 		if (test.tagName.toLowerCase() !== "webview") {
 			return {
 				available: false,
@@ -98,7 +94,6 @@ function checkWebviewAvailability(): { available: boolean; reason: string } {
 			};
 		}
 
-		// Additional check: Obsidian may disable webviewTag in webPreferences
 		const electron = getElectron();
 		if (!electron) {
 			return {
@@ -113,7 +108,7 @@ function checkWebviewAvailability(): { available: boolean; reason: string } {
 		return {
 			available: false,
 			reason: `Webview creation failed: ${e instanceof Error ? e.message : String(e)}. ` +
-				"Obsidian's BrowserWindow may have webviewTag: false in webPreferences.",
+				"The host window may have webviewTag: false in webPreferences.",
 		};
 	}
 }
@@ -139,7 +134,7 @@ export function buildWebPreferences(settings: BrowserPluginSettings, incognito: 
 /** Format compatibility info for display in settings UI. */
 export function formatCompatibilityReport(info: CompatibilityInfo): string {
 	const lines = [
-		`Obsidian: ${info.obsidianVersion}`,
+		`App: ${info.obsidianVersion}`,
 		`Electron: ${info.electronVersion}`,
 		`Chromium: ${info.chromiumVersion}`,
 		`Node.js: ${info.nodeVersion}`,

@@ -1,4 +1,5 @@
 import { setIcon } from "obsidian";
+import { getActiveDocument } from "../utils/dom";
 import type { BrowserTab } from "../types";
 
 export interface TabBarCallbacks {
@@ -14,7 +15,8 @@ export class TabBar {
 	private tabListEl: HTMLElement;
 
 	constructor(private callbacks: TabBarCallbacks) {
-		this.el = document.createElement("div");
+		const doc = getActiveDocument();
+		this.el = doc.createElement("div");
 		this.el.className = "local-html-browser-tab-bar";
 
 		this.tabListEl = this.el.createDiv({ cls: "local-html-browser-tab-list" });

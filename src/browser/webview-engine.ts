@@ -1,6 +1,7 @@
 import type { BrowserEngineEvents, BrowserPluginSettings } from "../types";
 import { buildWebPreferences } from "./compatibility";
 import { Logger } from "../utils/logger";
+import { getActiveDocument } from "../utils/dom";
 
 const log = new Logger("webview");
 
@@ -19,8 +20,7 @@ export interface WebviewElement extends HTMLElement {
 	openDevTools(): void;
 	closeDevTools(): void;
 	isDevToolsOpened(): boolean;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	executeJavaScript(code: string): Promise<any>;
+	executeJavaScript(code: string): Promise<unknown>;
 	insertCSS(css: string): void;
 	setUserAgent(userAgent: string): void;
 }
@@ -49,20 +49,14 @@ export class WebviewEngine {
 	mount(container: HTMLElement): boolean {
 		try {
 			this.container = container;
-			container.style.display = "flex";
-			container.style.flexDirection = "column";
-			container.style.flex = "1";
-			container.style.minHeight = "0";
-			container.style.overflow = "hidden";
+			container.addClass("local-html-browser-engine-container");
 
-			const webview = document.createElement("webview") as WebviewElement;
+			const doc = getActiveDocument();
+			const webview = doc.createElement("webview") as WebviewElement;
 			webview.className = "local-html-browser-webview";
 			webview.setAttribute("allowpopups", "");
 			webview.setAttribute("partition", this.partition);
 			webview.setAttribute("webpreferences", buildWebPreferences(this.settings, false));
-			webview.style.width = "100%";
-			webview.style.flex = "1 1 auto";
-			webview.style.border = "none";
 
 			this.attachEventListeners(webview);
 			container.appendChild(webview);
@@ -71,8 +65,7 @@ export class WebviewEngine {
 			this.resizeObserver = new ResizeObserver(() => this.syncWebviewSize());
 			this.resizeObserver.observe(container);
 
-			// Initial sizing after layout
-			requestAnimationFrame(() => this.syncWebviewSize());
+			window.requestAnimationFrame(() => this.syncWebviewSize());
 
 			log.info("Webview mounted.");
 			return true;
@@ -108,7 +101,7 @@ export class WebviewEngine {
 		if (!this.webview || !this.container) return;
 		const height = this.container.clientHeight;
 		if (height > 0) {
-			this.webview.style.height = `${height}px`;
+			this.webview.setCssProps({ height: `${height}px` });
 		}
 	}
 
@@ -210,7 +203,7 @@ export class WebviewEngine {
 	}
 
 	private attachEventListeners(webview: WebviewElement): void {
-		const add = (event: string, handler: EventListener) => {
+		const add = (event: string, handler: (e: Event) => void) => {
 			webview.addEventListener(event, handler);
 			this.boundHandlers.push({ event, handler });
 		};
@@ -237,43 +230,38 @@ export class WebviewEngine {
 			this.emitNavigationState();
 		});
 
-		add("did-navigate", ((e: Event) => {
-			const url = (e as CustomEvent & { url?: string }).url ?? webview.getURL();
+		add("did-navigate", (e: Event) => {
+			const url = getWebviewEventString(e, "url") ?? webview.getURL();
 			this.events.onNavigate(url);
 			this.emitNavigationState();
-		}) as EventListener);
+		});
 
-		add("did-navigate-in-page", ((e: Event) => {
-			const url = (e as CustomEvent & { url?: string }).url ?? webview.getURL();
+		add("did-navigate-in-page", (e: Event) => {
+			const url = getWebviewEventString(e, "url") ?? webview.getURL();
 			this.events.onNavigate(url);
 			this.emitNavigationState();
-		}) as EventListener);
+		});
 
-		add("page-title-updated", ((e: Event) => {
-			const title = (e as CustomEvent & { title?: string }).title ?? webview.getTitle();
+		add("page-title-updated", (e: Event) => {
+			const title = getWebviewEventString(e, "title") ?? webview.getTitle();
 			this.events.onTitleChange(title);
-		}) as EventListener);
+		});
 
-		add("page-favicon-updated", ((e: Event) => {
-			const favicons = (e as CustomEvent & { favicons?: string[] }).favicons;
-			if (favicons && favicons.length > 0) {
+		add("page-favicon-updated", (e: Event) => {
+			const favicons = getWebviewEventStringArray(e, "favicons");
+			if (favicons.length > 0) {
 				this.events.onFaviconChange(favicons[0]);
 			}
-		}) as EventListener);
+		});
 
-		add("new-window", ((e: Event) => {
+		add("new-window", (e: Event) => {
 			e.preventDefault();
-			const url = (e as CustomEvent & { url?: string }).url;
+			const url = getWebviewEventString(e, "url");
 			if (url) this.events.onNewWindow(url);
-		}) as EventListener);
+		});
 
-		add("console-message", ((e: Event) => {
-			const detail = e as CustomEvent & {
-				level?: number;
-				message?: string;
-				line?: number;
-				sourceId?: string;
-			};
+		add("console-message", (e: Event) => {
+			const level = getWebviewEventNumber(e, "level") ?? 0;
 			const levelMap: Record<number, "log" | "warn" | "error" | "info" | "debug"> = {
 				0: "debug",
 				1: "info",
@@ -281,28 +269,47 @@ export class WebviewEngine {
 				3: "error",
 			};
 			this.events.onConsoleMessage({
-				level: levelMap[detail.level ?? 0] ?? "log",
-				message: detail.message ?? "",
-				source: detail.sourceId ?? "",
-				line: detail.line ?? 0,
+				level: levelMap[level] ?? "log",
+				message: getWebviewEventString(e, "message") ?? "",
+				source: getWebviewEventString(e, "sourceId") ?? "",
+				line: getWebviewEventNumber(e, "line") ?? 0,
 				timestamp: Date.now(),
 			});
-		}) as EventListener);
+		});
 
-		add("did-fail-load", ((e: Event) => {
-			const detail = e as CustomEvent & {
-				errorDescription?: string;
-				validatedURL?: string;
-				errorCode?: number;
-			};
-			if (detail.errorCode === -3) return;
-			this.events.onError(
-				`Failed to load ${detail.validatedURL ?? "page"}: ${detail.errorDescription ?? "unknown error"}`,
-			);
-		}) as EventListener);
+		add("did-fail-load", (e: Event) => {
+			const errorCode = getWebviewEventNumber(e, "errorCode");
+			if (errorCode === -3) return;
+			const validatedURL = getWebviewEventString(e, "validatedURL") ?? "page";
+			const errorDescription = getWebviewEventString(e, "errorDescription") ?? "unknown error";
+			this.events.onError(`Failed to load ${validatedURL}: ${errorDescription}`);
+		});
 	}
 
 	private emitNavigationState(): void {
 		this.events.onCanNavigateChange(this.canGoBack(), this.canGoForward());
 	}
+}
+
+function getWebviewEventValue(event: Event, key: string): unknown {
+	if (key in event) {
+		return (event as unknown as Record<string, unknown>)[key];
+	}
+	return undefined;
+}
+
+function getWebviewEventString(event: Event, key: string): string | undefined {
+	const value = getWebviewEventValue(event, key);
+	return typeof value === "string" ? value : undefined;
+}
+
+function getWebviewEventNumber(event: Event, key: string): number | undefined {
+	const value = getWebviewEventValue(event, key);
+	return typeof value === "number" ? value : undefined;
+}
+
+function getWebviewEventStringArray(event: Event, key: string): string[] {
+	const value = getWebviewEventValue(event, key);
+	if (!Array.isArray(value)) return [];
+	return value.filter((item): item is string => typeof item === "string");
 }

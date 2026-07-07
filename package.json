@@ -1,6 +1,6 @@
 {
 	"name": "local-html-browser",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Run local file:// HTML apps inside the editor with full browser behavior.",
 	"main": "main.js",
 	"scripts": {
@@ -12,7 +12,6 @@
 	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^20.11.0",
-		"builtin-modules": "^3.3.0",
 		"esbuild": "^0.20.0",
 		"obsidian": "latest",
 		"tslib": "^2.6.2",

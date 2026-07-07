@@ -1,9 +1,10 @@
 import { ItemView, WorkspaceLeaf, setIcon, type ViewStateResult } from "obsidian";
 import type LocalHtmlBrowserPlugin from "../main";
-import { WEB_PAGE_VIEW_TYPE } from "../types";
+import { WEB_PAGE_VIEW_TYPE, parseWebPageState } from "../types";
 import { BrowserManager } from "../browser/browser-manager";
 import { FileWatcher } from "../utils/file-watcher";
 import { parsePageNote } from "../page-notes/page-notes";
+import { getViewContentContainer } from "../utils/dom";
 
 /**
  * A single webpage as its own Obsidian tab — no browser chrome, just the page.
@@ -51,19 +52,19 @@ export class WebPageView extends ItemView {
 	}
 
 	async setState(state: Record<string, unknown>, _result: ViewStateResult): Promise<void> {
-		const url = state.url as string | undefined;
-		if (url && this.browserManager) {
-			this.sourcePath = (state.sourcePath as string) ?? "";
-			this.loadPage(url, state.title as string | undefined);
-		} else if (url) {
-			this.pendingUrl = url;
-			this.pendingTitle = state.title as string | undefined;
-			this.sourcePath = (state.sourcePath as string) ?? "";
+		const parsed = parseWebPageState(state);
+		if (parsed?.url && this.browserManager) {
+			this.sourcePath = parsed.sourcePath ?? "";
+			this.loadPage(parsed.url, parsed.title);
+		} else if (parsed?.url) {
+			this.pendingUrl = parsed.url;
+			this.pendingTitle = parsed.title;
+			this.sourcePath = parsed.sourcePath ?? "";
 		}
 	}
 
 	async onOpen(): Promise<void> {
-		const container = this.containerEl.children[1] as HTMLElement;
+		const container = getViewContentContainer(this.containerEl);
 		container.empty();
 		container.addClass("local-html-browser-page-view");
 
@@ -89,7 +90,6 @@ export class WebPageView extends ItemView {
 
 		this.contentEl_ = container.createDiv({ cls: "local-html-browser-page-content" });
 		this.statusEl = container.createDiv({ cls: "local-html-browser-page-status" });
-		this.statusEl.style.display = "none";
 
 		this.browserManager = new BrowserManager(this.plugin.settings, {
 			onLoadStart: () => this.titleEl?.addClass("is-loading"),
@@ -122,10 +122,10 @@ export class WebPageView extends ItemView {
 			}
 		}
 
-		const state = this.leaf.getViewState().state as Record<string, unknown> | undefined;
-		if (state?.url) {
-			this.sourcePath = (state.sourcePath as string) ?? "";
-			this.loadPage(state.url as string, state.title as string | undefined);
+		const parsed = parseWebPageState(this.leaf.getViewState().state);
+		if (parsed?.url) {
+			this.sourcePath = parsed.sourcePath ?? "";
+			this.loadPage(parsed.url, parsed.title);
 		} else if (this.pendingUrl) {
 			this.loadPage(this.pendingUrl, this.pendingTitle);
 			this.pendingUrl = null;
@@ -176,7 +176,7 @@ export class WebPageView extends ItemView {
 
 	private showError(msg: string): void {
 		if (this.statusEl) {
-			this.statusEl.style.display = "block";
+			this.statusEl.addClass("is-visible");
 			this.statusEl.setText(msg);
 		}
 		if (this.titleEl) this.titleEl.setText(msg);

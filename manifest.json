@@ -1,8 +1,8 @@
 {
 	"id": "local-html-browser",
 	"name": "Local HTML Browser",
-	"version": "1.0.1",
-	"minAppVersion": "1.5.0",
+	"version": "1.0.2",
+	"minAppVersion": "1.7.2",
 	"description": "Run local file:// HTML apps with full browser behavior — SPAs, hash routes, and live page tabs.",
 	"author": "sumbass",
 	"authorUrl": "https://github.com/sumbass",

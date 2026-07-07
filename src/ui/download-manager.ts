@@ -1,91 +1,30 @@
-import type { DownloadItem } from "../types";
-import { generateId } from "../utils/paths";
-import { getPath } from "../utils/electron";
+import { getElectron } from "../utils/electron";
+import { getActiveDocument } from "../utils/dom";
 
 /**
  * Simple download manager tracking browser download events.
- * In webview mode, hooks into will-download via webContents when available.
  */
 export class DownloadManager {
-	private downloads: DownloadItem[] = [];
-
-	onDownloadsChanged?: (downloads: DownloadItem[]) => void;
-
-	getDownloads(): DownloadItem[] {
-		return [...this.downloads];
-	}
-
-	/** Register a new download (called from webview download events). */
-	addDownload(url: string, filename: string, savePath: string): DownloadItem {
-		const item: DownloadItem = {
-			id: generateId(),
-			url,
-			filename,
-			path: savePath,
-			state: "progressing",
-			receivedBytes: 0,
-			totalBytes: 0,
-			startedAt: Date.now(),
-		};
-		this.downloads.unshift(item);
-		this.notify();
-		return item;
-	}
-
-	updateProgress(id: string, received: number, total: number): void {
-		const item = this.downloads.find((d) => d.id === id);
-		if (item) {
-			item.receivedBytes = received;
-			item.totalBytes = total;
-			this.notify();
-		}
-	}
-
-	completeDownload(id: string): void {
-		const item = this.downloads.find((d) => d.id === id);
-		if (item) {
-			item.state = "completed";
-			this.notify();
-		}
-	}
-
-	cancelDownload(id: string): void {
-		const item = this.downloads.find((d) => d.id === id);
-		if (item) {
-			item.state = "cancelled";
-			this.notify();
-		}
-	}
-
-	clearCompleted(): void {
-		this.downloads = this.downloads.filter((d) => d.state === "progressing");
-		this.notify();
-	}
-
-	/** Suggest download path based on settings. */
-	suggestSavePath(filename: string, downloadDir: string): string {
-		const pathMod = getPath();
-		if (!pathMod) return filename;
-		if (downloadDir) {
-			return pathMod.join(downloadDir, filename);
-		}
-		return filename;
-	}
-
-	private notify(): void {
-		this.onDownloadsChanged?.(this.downloads);
-	}
+	// Reserved for future download UI wiring.
 }
 
-/** Show native open file dialog via Electron remote or HTML fallback. */
-export async function openFileDialog(extensions?: string[]): Promise<string | null> {
-	try {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const win = window as any;
-		const electron = win.require?.("electron");
-		const dialog = electron?.remote?.dialog ?? electron?.dialog;
+function getElectronFilePath(file: File): string {
+	if ("path" in file) {
+		const pathValue = (file as File & { path?: unknown }).path;
+		if (typeof pathValue === "string" && pathValue.length > 0) {
+			return pathValue;
+		}
+	}
+	return file.name;
+}
 
-		if (dialog?.showOpenDialog) {
+/** Show native open file dialog via Electron or HTML fallback. */
+export async function openFileDialog(extensions?: string[]): Promise<string | null> {
+	const electron = getElectron();
+	const dialog = electron?.dialog ?? electron?.remote?.dialog;
+
+	if (dialog?.showOpenDialog) {
+		try {
 			const result = await dialog.showOpenDialog({
 				properties: ["openFile"],
 				filters: [
@@ -99,23 +38,19 @@ export async function openFileDialog(extensions?: string[]): Promise<string | nu
 			if (!result.canceled && result.filePaths.length > 0) {
 				return result.filePaths[0];
 			}
+		} catch {
+			// fall through to HTML input
 		}
-	} catch {
-		// fall through to HTML input
 	}
 
 	return new Promise((resolve) => {
-		const input = document.createElement("input");
+		const doc = getActiveDocument();
+		const input = doc.createElement("input");
 		input.type = "file";
 		input.accept = ".html,.htm,.svg,.xml,.txt,.md,.markdown";
 		input.onchange = () => {
 			const file = input.files?.[0];
-			if (file) {
-				// HTML file input gives fake path on web; use name only
-				resolve((file as File & { path?: string }).path ?? file.name);
-			} else {
-				resolve(null);
-			}
+			resolve(file ? getElectronFilePath(file) : null);
 		};
 		input.click();
 	});
@@ -123,22 +58,20 @@ export async function openFileDialog(extensions?: string[]): Promise<string | nu
 
 /** Show native open folder dialog. */
 export async function openFolderDialog(): Promise<string | null> {
-	try {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const win = window as any;
-		const electron = win.require?.("electron");
-		const dialog = electron?.remote?.dialog ?? electron?.dialog;
+	const electron = getElectron();
+	const dialog = electron?.dialog ?? electron?.remote?.dialog;
 
-		if (dialog?.showOpenDialog) {
+	if (dialog?.showOpenDialog) {
+		try {
 			const result = await dialog.showOpenDialog({
 				properties: ["openDirectory"],
 			});
 			if (!result.canceled && result.filePaths.length > 0) {
 				return result.filePaths[0];
 			}
+		} catch {
+			// unavailable
 		}
-	} catch {
-		// unavailable
 	}
 	return null;
 }

@@ -5,6 +5,20 @@ import { getPath } from "../utils/electron";
 
 const PAGE_NOTE_EXTENSION = "webpage";
 
+interface VaultPathAdapter {
+	getFullPath?(path: string): string;
+	getResourcePath?(path: string): string;
+	basePath?: string;
+}
+
+function getVaultPathAdapter(app: App): VaultPathAdapter {
+	return app.vault.adapter as VaultPathAdapter;
+}
+
+function readFrontmatterString(value: unknown): string | undefined {
+	return typeof value === "string" ? value : undefined;
+}
+
 /** Whether a vault file should open as a live web page tab. */
 export function isPageNoteFile(file: TFile): boolean {
 	if (file.extension === PAGE_NOTE_EXTENSION) return true;
@@ -24,11 +38,11 @@ export async function parsePageNote(app: App, file: TFile): Promise<PageNoteData
 		const cache = app.metadataCache.getFileCache(file);
 		const fm = cache?.frontmatter;
 		if (!fm?.["browser-page"] && !fm?.browser_page) return null;
-		const url = fm.url as string | undefined;
+		const url = readFrontmatterString(fm.url);
 		if (!url) return null;
 		return {
 			url,
-			title: (fm.title as string) || file.basename,
+			title: readFrontmatterString(fm.title) || file.basename,
 		};
 	}
 
@@ -51,9 +65,16 @@ export function parseWebpageFile(content: string, fallbackTitle: string): PageNo
 		if (end !== -1) {
 			const yaml = trimmed.slice(3, end).trim();
 			try {
-				const parsed = parseYaml(yaml) as { url?: string; title?: string };
-				if (parsed.url) {
-					return { url: parsed.url, title: parsed.title || fallbackTitle };
+				const parsed = parseYaml(yaml);
+				if (parsed && typeof parsed === "object") {
+					const record = parsed as Record<string, unknown>;
+					const url = readFrontmatterString(record.url);
+					if (url) {
+						return {
+							url,
+							title: readFrontmatterString(record.title) || fallbackTitle,
+						};
+					}
 				}
 			} catch {
 				// fall through
@@ -77,7 +98,7 @@ export function buildWebpageFileContent(url: string, title: string): string {
 
 /** Resolve a vault HTML file to a loadable URL. */
 export function vaultFileToUrl(app: App, file: TFile): string | null {
-	const adapter = app.vault.adapter as { getFullPath?: (path: string) => string; getResourcePath?: (path: string) => string };
+	const adapter = getVaultPathAdapter(app);
 
 	if (adapter.getFullPath) {
 		try {
@@ -97,9 +118,8 @@ export function vaultFileToUrl(app: App, file: TFile): string | null {
 	}
 
 	const pathMod = getPath();
-	const base = adapter as { basePath?: string };
-	if (pathMod && base.basePath) {
-		return pathToFileUrl(pathMod.join(base.basePath, file.path));
+	if (pathMod && adapter.basePath) {
+		return pathToFileUrl(pathMod.join(adapter.basePath, file.path));
 	}
 
 	return null;

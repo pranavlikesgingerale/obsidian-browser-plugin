@@ -11,6 +11,7 @@ import { FileWatcher } from "../utils/file-watcher";
 import { openFileDialog, openFolderDialog } from "./download-manager";
 import { pathToFileUrl } from "../utils/paths";
 import { Notice } from "obsidian";
+import { getViewContentContainer } from "../utils/dom";
 
 /**
  * Main browser view — embeds Chromium webview (or iframe fallback) with full browser UI.
@@ -57,7 +58,7 @@ export class BrowserView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
-		const container = this.containerEl.children[1] as HTMLElement;
+		const container = getViewContentContainer(this.containerEl);
 		container.empty();
 		container.addClass("local-html-browser-view-container");
 
@@ -71,8 +72,8 @@ export class BrowserView extends ItemView {
 			onStop: () => this.browserManager?.stop(),
 			onHome: () => this.navigateHome(),
 			onNavigate: (url) => this.navigateTo(url),
-			onOpenFile: () => this.handleOpenFile(),
-			onOpenFolder: () => this.handleOpenFolder(),
+			onOpenFile: () => { void this.handleOpenFile(); },
+			onOpenFolder: () => { void this.handleOpenFolder(); },
 			onToggleBookmark: () => this.toggleBookmark(),
 			onToggleDevTools: () => this.browserManager?.toggleDevTools(),
 			onNewTab: () => this.createNewTab(),
@@ -122,7 +123,7 @@ export class BrowserView extends ItemView {
 		}
 
 		// Create initial tab
-		const tab = this.tabManager.createTab();
+		this.tabManager.createTab();
 		if (this.plugin.settings.homeUrl) {
 			this.navigateTo(this.plugin.settings.homeUrl);
 		} else {
@@ -273,7 +274,7 @@ export class BrowserView extends ItemView {
 			this.toolbar?.setBookmarked(true);
 			new Notice("Bookmark added");
 		}
-		this.plugin.savePersistedData();
+		void this.plugin.savePersistedData();
 	}
 
 	private handleLoadStart(): void {

@@ -85,7 +85,9 @@ export class BrowserManager {
 					const blob = new Blob([resolved.content ?? ""], { type: "text/html" });
 					const reader = new FileReader();
 					reader.onload = () => {
-						this.engine?.loadUrl(reader.result as string);
+						if (typeof reader.result === "string") {
+							this.engine?.loadUrl(reader.result);
+						}
 					};
 					reader.readAsDataURL(blob);
 					return;
