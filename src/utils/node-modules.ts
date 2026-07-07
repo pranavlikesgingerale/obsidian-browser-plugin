@@ -7,17 +7,15 @@ export interface FsWatcher {
 	close(): void;
 }
 
+type WatchListener = (eventType: string, filename: string | null) => void;
+
 export interface FsModule {
 	readFileSync(path: string, encoding: "utf-8"): string;
-	readFileSync(path: string): Buffer;
+	readFileSync(path: string): string;
 	statSync(path: string): FsStat;
 	readdirSync(path: string): string[];
-	watch(
-		path: string,
-		options: { recursive?: boolean },
-		listener: (eventType: string, filename: string | Buffer | null) => void,
-	): FsWatcher;
-	watch(path: string, listener: (eventType: string, filename: string | Buffer | null) => void): FsWatcher;
+	watch(path: string, options: { recursive?: boolean }, listener: WatchListener): FsWatcher;
+	watch(path: string, listener: WatchListener): FsWatcher;
 }
 
 /** Minimal Node.js `path` surface used by this plugin. */
@@ -46,16 +44,44 @@ function callMethod(mod: Record<string, unknown>, key: string, args: unknown[]):
 	if (typeof fn !== "function") {
 		throw new Error(`Expected ${key} to be a function.`);
 	}
-	return fn.apply(mod, args) as unknown;
+	const result: unknown = Reflect.apply(fn, mod, args);
+	return result;
+}
+
+function toUtf8String(value: unknown): string {
+	if (typeof value === "string") {
+		return value;
+	}
+	if (value instanceof Uint8Array) {
+		return new TextDecoder().decode(value);
+	}
+	throw new Error("Expected string or Uint8Array from fs.readFileSync.");
+}
+
+function toWatchFilename(value: unknown): string | null {
+	if (value === null || value === undefined) {
+		return null;
+	}
+	if (typeof value === "string") {
+		return value;
+	}
+	if (value instanceof Uint8Array) {
+		return new TextDecoder().decode(value);
+	}
+	return null;
 }
 
 function toWatcher(value: unknown): FsWatcher {
 	if (!isRecord(value) || typeof value.close !== "function") {
 		throw new Error("Invalid fs.watch result.");
 	}
+	const closeFn = value.close;
 	return {
 		close: (): void => {
-			(value.close as () => void).call(value);
+			if (typeof closeFn !== "function") {
+				throw new Error("Invalid fs.watch close handler.");
+			}
+			Reflect.apply(closeFn, value, []);
 		},
 	};
 }
@@ -64,11 +90,22 @@ function toStat(value: unknown): FsStat {
 	if (!isRecord(value) || typeof value.isDirectory !== "function") {
 		throw new Error("Invalid fs.statSync result.");
 	}
-	const isDirectoryFn = value.isDirectory as () => unknown;
+	const isDirectoryFn = value.isDirectory;
 	return {
 		isDirectory(): boolean {
-			return Boolean(isDirectoryFn.call(value));
+			if (typeof isDirectoryFn !== "function") {
+				return false;
+			}
+			const result: unknown = Reflect.apply(isDirectoryFn, value, []);
+			return Boolean(result);
 		},
+	};
+}
+
+function wrapWatchListener(listener: WatchListener): (eventType: unknown, filename: unknown) => void {
+	return (eventType: unknown, filename: unknown) => {
+		const event = typeof eventType === "string" ? eventType : String(eventType);
+		listener(event, toWatchFilename(filename));
 	};
 }
 
@@ -86,8 +123,8 @@ export function toFsModule(mod: unknown): FsModule | null {
 	const fsRecord: Record<string, unknown> = mod;
 
 	function readFileSync(path: string, encoding: "utf-8"): string;
-	function readFileSync(path: string): Buffer;
-	function readFileSync(path: string, encoding?: "utf-8"): string | Buffer {
+	function readFileSync(path: string): string;
+	function readFileSync(path: string, encoding?: "utf-8"): string {
 		if (encoding) {
 			const result = callMethod(fsRecord, "readFileSync", [path, encoding]);
 			if (typeof result !== "string") {
@@ -95,11 +132,7 @@ export function toFsModule(mod: unknown): FsModule | null {
 			}
 			return result;
 		}
-		const result = callMethod(fsRecord, "readFileSync", [path]);
-		if (typeof result !== "object" || result === null || !Buffer.isBuffer(result)) {
-			throw new Error("Expected Buffer from fs.readFileSync.");
-		}
-		return result;
+		return toUtf8String(callMethod(fsRecord, "readFileSync", [path]));
 	}
 
 	return {
@@ -114,15 +147,17 @@ export function toFsModule(mod: unknown): FsModule | null {
 		},
 		watch(
 			path: string,
-			optionsOrListener:
-				| { recursive?: boolean }
-				| ((eventType: string, filename: string | Buffer | null) => void),
-			listener?: (eventType: string, filename: string | Buffer | null) => void,
+			optionsOrListener: { recursive?: boolean } | WatchListener,
+			listener?: WatchListener,
 		): FsWatcher {
 			const result =
 				typeof optionsOrListener === "function"
-					? callMethod(fsRecord, "watch", [path, optionsOrListener])
-					: callMethod(fsRecord, "watch", [path, optionsOrListener, listener]);
+					? callMethod(fsRecord, "watch", [path, wrapWatchListener(optionsOrListener)])
+					: callMethod(fsRecord, "watch", [
+							path,
+							optionsOrListener,
+							wrapWatchListener(listener ?? (() => undefined)),
+						]);
 			return toWatcher(result);
 		},
 	};
@@ -139,24 +174,26 @@ export function toPathModule(mod: unknown): PathModule | null {
 		return null;
 	}
 
+	const pathRecord: Record<string, unknown> = mod;
+
 	return {
 		extname(path: string): string {
-			const result = callMethod(mod, "extname", [path]);
+			const result = callMethod(pathRecord, "extname", [path]);
 			return typeof result === "string" ? result : "";
 		},
 		join(...paths: string[]): string {
-			const result = callMethod(mod, "join", paths);
+			const result = callMethod(pathRecord, "join", paths);
 			return typeof result === "string" ? result : paths.join("/");
 		},
 		resolve(...paths: string[]): string {
-			const result = callMethod(mod, "resolve", paths);
+			const result = callMethod(pathRecord, "resolve", paths);
 			return typeof result === "string" ? result : paths.join("/");
 		},
 		dirname(path: string): string {
-			const result = callMethod(mod, "dirname", [path]);
+			const result = callMethod(pathRecord, "dirname", [path]);
 			return typeof result === "string" ? result : path;
 		},
-		sep: readString(mod.sep) ?? "/",
+		sep: readString(pathRecord.sep) ?? "/",
 	};
 }
 
@@ -170,8 +207,8 @@ export function readProcessVersion(key: "electron" | "chrome" | "node"): string 
 	}
 }
 
-export function formatWatchFilename(filename: string | Buffer | null | undefined, fallback: string): string {
+export function formatWatchFilename(filename: string | Uint8Array | null | undefined, fallback: string): string {
 	if (typeof filename === "string") return filename;
-	if (Buffer.isBuffer(filename)) return filename.toString("utf-8");
+	if (filename instanceof Uint8Array) return new TextDecoder().decode(filename);
 	return fallback;
 }

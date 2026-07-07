@@ -50,6 +50,18 @@ Second pass of Obsidian community plugin review fixes. No new features — compl
 
 - Direct **`fs`** access remains intentional for local `file://` apps outside the vault
 
+### Release checklist
+
+When publishing on GitHub, attach these three files **from this repo after `npm run build`**:
+
+- `main.js`
+- `manifest.json` (must match repo — currently **`minAppVersion`: `1.13.0`**, **`version`: `1.0.3`**)
+- `styles.css`
+
+Release title: **`Local HTML Browser 1.0.3`**
+
+If review reports “release manifest differs from repository manifest”, the attached `manifest.json` is stale — replace it with the repo copy and re-run review.
+
 ---
 
 ## Upgrade from 1.0.2

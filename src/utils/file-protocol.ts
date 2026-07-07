@@ -21,9 +21,9 @@ export function readLocalFile(filePath: string): { content: string; mimeType: st
 			return { content: html, mimeType: "text/html", url };
 		}
 
-		const content = fs.readFileSync(filePath);
+		const content = fs.readFileSync(filePath, "utf-8");
 		const mimeType = mimeForExtension(ext);
-		return { content: content.toString("utf-8"), mimeType, url };
+		return { content, mimeType, url };
 	} catch {
 		return null;
 	}
