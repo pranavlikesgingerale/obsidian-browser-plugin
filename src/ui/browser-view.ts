@@ -1,6 +1,7 @@
 import { ItemView, Notice, WorkspaceLeaf, type ViewStateResult } from "obsidian";
 import type LocalHtmlBrowserPlugin from "../main";
-import { BROWSER_VIEW_TYPE, parseBrowserViewState, type BrowserViewState } from "../types";
+import { BROWSER_VIEW_TYPE, getTabDisplayTitle, parseBrowserViewState, type BrowserViewState } from "../types";
+import { isPersistableBrowserUrl } from "../utils/browser-url";
 import { BrowserManager } from "../browser/browser-manager";
 import { TabManager } from "../tabs/tab-manager";
 import { Toolbar } from "./toolbar";
@@ -37,7 +38,7 @@ export class BrowserView extends ItemView {
 		this.fileWatcher = new FileWatcher();
 
 		this.tabManager.onTabsChanged = (tabs, activeId) => {
-			this.tabBar?.render(tabs, activeId);
+			this.tabBar?.sync(tabs, activeId);
 			this.schedulePersist();
 		};
 	}
@@ -48,7 +49,7 @@ export class BrowserView extends ItemView {
 
 	getDisplayText(): string {
 		const tab = this.tabManager.getActiveTab();
-		return tab?.title ? `Browser: ${tab.title}` : "Browser";
+		return tab ? `Browser: ${getTabDisplayTitle(tab)}` : "Browser";
 	}
 
 	getIcon(): string {
@@ -105,8 +106,17 @@ export class BrowserView extends ItemView {
 			onCloseTab: (id) => this.closeTab(id),
 			onDuplicateTab: (id) => this.duplicateTab(id),
 			onNewTab: () => this.createNewTab(),
+			onRenameTab: (id, title) => this.renameTab(id, title),
+			onResetTabTitle: (id) => this.resetTabTitle(id),
+			onMoveTab: (from, to) => this.moveTab(from, to),
+			onCloseOtherTabs: (id) => this.closeOtherTabs(id),
+			onCloseTabsToRight: (id) => this.closeTabsToRight(id),
 		});
 		root.appendChild(this.tabBar.el);
+
+		this.plugin.registerDomEvent(container, "keydown", (event: KeyboardEvent) => {
+			this.handleTabShortcuts(event);
+		});
 
 		this.webviewContainer = root.createDiv({ cls: "local-html-browser-content" });
 
@@ -123,7 +133,7 @@ export class BrowserView extends ItemView {
 			onLoadingStateChange: (loading) => this.handleLoadingChange(loading),
 			onCanNavigateChange: (back, forward) => this.toolbar?.setNavState(back, forward),
 			onConsoleMessage: (msg) => this.devToolsManager.handleConsoleMessage(msg),
-			onNewWindow: (url) => this.navigateTo(url),
+			onNewWindow: (url) => this.createNewTab(url),
 			onError: (msg) => {
 				this.statusBar?.setStatus(msg);
 				new Notice(msg, 5000);
@@ -186,7 +196,12 @@ export class BrowserView extends ItemView {
 
 	reopenClosedTab(): void {
 		const tab = this.tabManager.reopenClosedTab();
-		if (tab?.url) this.navigateTo(tab.url);
+		if (tab) this.loadActiveTabContent();
+	}
+
+	renameActiveTab(): void {
+		const tab = this.tabManager.getActiveTab();
+		if (tab) this.tabBar?.startRename(tab.id);
 	}
 
 	goBack(): void {
@@ -277,12 +292,14 @@ export class BrowserView extends ItemView {
 
 	private openCurrentAsPage(): void {
 		const url = this.getCurrentUrl();
-		if (!url || url.startsWith("blob:")) {
-			new Notice("Nothing to open — navigate to a page first.");
+		if (!url || url.startsWith("blob:") || url.startsWith("data:")) {
+			new Notice("Nothing to open — navigate to a real page first.");
 			return;
 		}
 		const title = this.getCurrentTitle() || "Web Page";
-		void this.plugin.openWebPage(url, title);
+		void this.plugin.openWebPage(url, title).then((view) => {
+			if (view) new Notice(`Opened as page tab${this.plugin.settings.pageNotesFolder ? " and saved to vault" : ""}.`);
+		});
 	}
 
 	private saveCurrentAsNote(): void {
@@ -299,27 +316,117 @@ export class BrowserView extends ItemView {
 
 	private selectTab(tabId: string): void {
 		this.tabManager.setActiveTab(tabId);
-		const tab = this.tabManager.getActiveTab();
-		if (tab?.url) {
-			this.browserManager?.loadUrl(tab.url);
-			this.toolbar?.setUrl(tab.url);
-		}
+		this.loadActiveTabContent();
 	}
 
 	private closeTab(tabId: string): void {
 		this.tabManager.closeTab(tabId);
-		const tab = this.tabManager.getActiveTab();
-		if (tab?.url) {
-			this.browserManager?.loadUrl(tab.url);
-			this.toolbar?.setUrl(tab.url);
-		} else if (this.tabManager.getTabs().length === 0) {
+		if (this.tabManager.getTabs().length === 0) {
 			this.createNewTab();
+			return;
 		}
+		this.loadActiveTabContent();
 	}
 
 	private duplicateTab(tabId: string): void {
 		const dup = this.tabManager.duplicateTab(tabId);
-		if (dup?.url) this.navigateTo(dup.url);
+		if (dup) this.loadActiveTabContent();
+	}
+
+	private renameTab(tabId: string, title: string): void {
+		this.tabManager.renameTab(tabId, title);
+		this.schedulePersist();
+	}
+
+	private resetTabTitle(tabId: string): void {
+		this.tabManager.resetTabTitle(tabId);
+		this.schedulePersist();
+	}
+
+	private moveTab(fromIndex: number, toIndex: number): void {
+		this.tabManager.moveTab(fromIndex, toIndex);
+	}
+
+	private closeOtherTabs(tabId: string): void {
+		this.tabManager.closeOtherTabs(tabId);
+		this.loadActiveTabContent();
+	}
+
+	private closeTabsToRight(tabId: string): void {
+		this.tabManager.closeTabsToRight(tabId);
+		this.loadActiveTabContent();
+	}
+
+	private loadActiveTabContent(): void {
+		const tab = this.tabManager.getActiveTab();
+		if (!tab) return;
+
+		if (tab.url && isPersistableBrowserUrl(tab.url)) {
+			this.browserManager?.loadUrl(tab.url);
+			this.toolbar?.setUrl(tab.url);
+			this.toolbar?.setBookmarked(this.plugin.bookmarkManager.isBookmarked(tab.url));
+			return;
+		}
+
+		if (tab.url.startsWith("blob:")) {
+			this.browserManager?.loadUrl(tab.url);
+			this.toolbar?.setUrl(tab.url);
+			return;
+		}
+
+		this.toolbar?.setUrl("");
+		this.loadWelcomePage();
+	}
+
+	private handleTabShortcuts(event: KeyboardEvent): void {
+		const target = event.target;
+		if (
+			target instanceof HTMLInputElement ||
+			target instanceof HTMLTextAreaElement ||
+			(target instanceof HTMLElement && target.isContentEditable)
+		) {
+			return;
+		}
+
+		if (event.ctrlKey && event.key === "Tab") {
+			event.preventDefault();
+			this.selectAdjacentTab(event.shiftKey ? -1 : 1);
+			return;
+		}
+
+		if (event.ctrlKey && (event.key === "t" || event.key === "T")) {
+			event.preventDefault();
+			this.createNewTab();
+			return;
+		}
+
+		if (event.ctrlKey && (event.key === "w" || event.key === "W")) {
+			event.preventDefault();
+			const tab = this.tabManager.getActiveTab();
+			if (tab) this.closeTab(tab.id);
+			return;
+		}
+
+		if (event.ctrlKey && event.shiftKey && (event.key === "T" || event.key === "t")) {
+			event.preventDefault();
+			this.reopenClosedTab();
+			return;
+		}
+
+		if (event.key === "F2") {
+			event.preventDefault();
+			this.renameActiveTab();
+		}
+	}
+
+	private selectAdjacentTab(direction: 1 | -1): void {
+		const tabs = this.tabManager.getTabs();
+		const activeId = this.tabManager.getActiveTabId();
+		const index = tabs.findIndex((tab) => tab.id === activeId);
+		if (index === -1 || tabs.length === 0) return;
+
+		const next = tabs[(index + direction + tabs.length) % tabs.length];
+		if (next) this.selectTab(next.id);
 	}
 
 	private navigateHome(): void {
@@ -375,7 +482,13 @@ export class BrowserView extends ItemView {
 		this.toolbar?.setUrl(url);
 		const tab = this.tabManager.getActiveTab();
 		if (tab) {
-			this.tabManager.updateTab(tab.id, { url });
+			const urlChanged = tab.url !== url;
+			this.tabManager.updateTab(tab.id, {
+				url,
+				...(urlChanged && !tab.titlePinned
+					? { customTitle: undefined, titlePinned: false }
+					: {}),
+			});
 		}
 		this.plugin.historyManager.addEntry(url, this.browserManager?.getTitle() ?? url);
 		this.toolbar?.setBookmarked(this.plugin.bookmarkManager.isBookmarked(url));
@@ -391,7 +504,7 @@ export class BrowserView extends ItemView {
 		if (tab) {
 			this.tabManager.updateTab(tab.id, { title });
 		}
-		this.statusBar?.setStatus(title);
+		this.statusBar?.setStatus(tab?.titlePinned && tab.customTitle ? tab.customTitle : title);
 	}
 
 	private handleFaviconChange(favicon: string): void {

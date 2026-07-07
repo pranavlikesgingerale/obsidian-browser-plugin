@@ -150,6 +150,17 @@ export function registerCommands(plugin: LocalHtmlBrowserPlugin): void {
 	});
 
 	plugin.addCommand({
+		id: "rename-browser-tab",
+		name: "Browser: Rename tab",
+		checkCallback: (checking) => {
+			const view = plugin.getActiveBrowserView();
+			if (!view) return false;
+			if (!checking) view.renameActiveTab();
+			return true;
+		},
+	});
+
+	plugin.addCommand({
 		id: "show-history",
 		name: "Browser: Show history",
 		callback: async () => {

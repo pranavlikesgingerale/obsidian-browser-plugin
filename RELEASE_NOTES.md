@@ -29,6 +29,23 @@ Attach `main.js`, `manifest.json`, and `styles.css` from this release.
 - Works with Obsidian workspace layout restore (`getState` / `setState` on the browser view)
 - If the browser pane was closed before quitting, it reopens on startup when session restore is enabled
 
+### Tab bar
+
+- **Rename tabs** — double-click a tab, press F2, or use **Browser: Rename tab** / right-click → Rename tab
+- Custom names persist across sessions; **Reset title** restores the page title
+- **Drag tabs** to reorder; scroll the tab strip with the mouse wheel when many tabs are open
+- **Middle-click** a tab to close it
+- Right-click menu: duplicate, close, close others, close tabs to the right
+- Keyboard shortcuts: **Ctrl+T** new tab, **Ctrl+W** close, **Ctrl+Shift+T** reopen closed, **Ctrl+Tab** / **Ctrl+Shift+Tab** cycle tabs
+- Links that open a new window open in a **new tab** instead of replacing the current one
+
+### Standalone page tabs
+
+- **Open as page** now loads with the same webview engine as the browser (no broken iframe fallback)
+- Automatically saves a **`.webpage` vault note** in your Browser Pages folder
+- Page tabs restore on startup when session restore is enabled
+- Reopen saved pages from the vault by clicking the `.webpage` file
+
 ---
 
 ## Upgrade from 1.0.3

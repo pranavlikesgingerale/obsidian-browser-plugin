@@ -25,6 +25,10 @@ export class TabManager {
 		return this.activeTabId;
 	}
 
+	getTabIndex(tabId: string): number {
+		return this.tabs.findIndex((t) => t.id === tabId);
+	}
+
 	createTab(url = "", title = "New Tab"): BrowserTab {
 		const tab: BrowserTab = {
 			id: generateId(),
@@ -61,6 +65,37 @@ export class TabManager {
 		this.notify();
 	}
 
+	closeOtherTabs(keepTabId: string): void {
+		const keep = this.tabs.find((t) => t.id === keepTabId);
+		if (!keep) return;
+
+		for (const tab of this.tabs) {
+			if (tab.id === keepTabId) continue;
+			this.closedTabs.unshift({ tab: { ...tab }, closedAt: Date.now() });
+		}
+		if (this.closedTabs.length > this.maxClosedTabs) {
+			this.closedTabs.splice(this.maxClosedTabs);
+		}
+
+		this.tabs = [keep];
+		this.activeTabId = keepTabId;
+		this.notify();
+	}
+
+	closeTabsToRight(tabId: string): void {
+		const index = this.tabs.findIndex((t) => t.id === tabId);
+		if (index === -1 || index >= this.tabs.length - 1) return;
+
+		const removed = this.tabs.splice(index + 1);
+		for (const tab of removed) {
+			this.closedTabs.unshift({ tab: { ...tab }, closedAt: Date.now() });
+		}
+		if (this.closedTabs.length > this.maxClosedTabs) {
+			this.closedTabs.splice(this.maxClosedTabs);
+		}
+		this.notify();
+	}
+
 	reopenClosedTab(): BrowserTab | null {
 		const snapshot = this.closedTabs.shift();
 		if (!snapshot) return null;
@@ -75,7 +110,37 @@ export class TabManager {
 	duplicateTab(tabId: string): BrowserTab | null {
 		const source = this.tabs.find((t) => t.id === tabId);
 		if (!source) return null;
-		return this.createTab(source.url, source.title);
+
+		const tab = this.createTab(source.url, source.title);
+		this.updateTab(tab.id, {
+			favicon: source.favicon,
+			customTitle: source.customTitle,
+			titlePinned: source.titlePinned,
+		});
+		return tab;
+	}
+
+	renameTab(tabId: string, customTitle: string): void {
+		const trimmed = customTitle.trim();
+		if (!trimmed) {
+			this.resetTabTitle(tabId);
+			return;
+		}
+		this.updateTab(tabId, { customTitle: trimmed, titlePinned: true });
+	}
+
+	resetTabTitle(tabId: string): void {
+		this.updateTab(tabId, { customTitle: undefined, titlePinned: false });
+	}
+
+	moveTab(fromIndex: number, toIndex: number): void {
+		if (fromIndex === toIndex) return;
+		if (fromIndex < 0 || fromIndex >= this.tabs.length) return;
+		if (toIndex < 0 || toIndex >= this.tabs.length) return;
+
+		const [tab] = this.tabs.splice(fromIndex, 1);
+		this.tabs.splice(toIndex, 0, tab);
+		this.notify();
 	}
 
 	setActiveTab(tabId: string): void {
@@ -106,6 +171,8 @@ export class TabManager {
 				url: tab.url,
 				title: tab.title || tab.url,
 				favicon: tab.favicon || undefined,
+				customTitle: tab.customTitle,
+				titlePinned: tab.titlePinned,
 			});
 		}
 
@@ -120,6 +187,8 @@ export class TabManager {
 			id: generateId(),
 			url: tab.url,
 			title: tab.title || tab.url,
+			customTitle: tab.customTitle,
+			titlePinned: tab.titlePinned,
 			favicon: tab.favicon ?? "",
 			isLoading: false,
 			canGoBack: false,

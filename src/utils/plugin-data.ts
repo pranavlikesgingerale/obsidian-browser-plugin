@@ -1,4 +1,4 @@
-import type { BrowserPluginSettings, Bookmark, BrowserSessionSnapshot, HistoryEntry } from "../types";
+import type { BrowserPluginSettings, Bookmark, BrowserSessionSnapshot, HistoryEntry, PersistedWebPage } from "../types";
 import { parseBrowserSession } from "../types";
 
 export interface PluginData {
@@ -6,6 +6,7 @@ export interface PluginData {
 	history?: HistoryEntry[];
 	bookmarks?: Bookmark[];
 	session?: BrowserSessionSnapshot;
+	openPages?: PersistedWebPage[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -85,6 +86,15 @@ function isBrowserSession(value: unknown): value is BrowserSessionSnapshot {
 	return parsed !== null && parsed.tabs.length > 0;
 }
 
+function isPersistedWebPage(value: unknown): value is PersistedWebPage {
+	return (
+		isRecord(value) &&
+		typeof value.url === "string" &&
+		value.url.length > 0 &&
+		typeof value.title === "string"
+	);
+}
+
 export function parsePluginData(raw: unknown): PluginData {
 	if (!isRecord(raw)) return {};
 
@@ -100,6 +110,9 @@ export function parsePluginData(raw: unknown): PluginData {
 	}
 	if (raw.session !== undefined && isBrowserSession(raw.session)) {
 		data.session = parseBrowserSession(raw.session) ?? undefined;
+	}
+	if (Array.isArray(raw.openPages)) {
+		data.openPages = raw.openPages.filter(isPersistedWebPage);
 	}
 	return data;
 }

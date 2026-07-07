@@ -77,12 +77,24 @@ export interface BrowserTab {
 	id: string;
 	url: string;
 	title: string;
+	/** User-defined label shown instead of the page title when set. */
+	customTitle?: string;
+	/** When true, page title changes do not replace the tab label. */
+	titlePinned?: boolean;
 	favicon: string;
 	isLoading: boolean;
 	canGoBack: boolean;
 	canGoForward: boolean;
 	createdAt: number;
 	lastActiveAt: number;
+}
+
+/** Label shown on a tab strip item. */
+export function getTabDisplayTitle(tab: Pick<BrowserTab, "customTitle" | "title">): string {
+	const custom = tab.customTitle?.trim();
+	if (custom) return custom;
+	const title = tab.title?.trim();
+	return title || "New Tab";
 }
 
 /** History entry for navigation. */
@@ -175,11 +187,20 @@ export interface PageNoteData {
 	title: string;
 }
 
+/** A standalone page tab saved for restore. */
+export interface PersistedWebPage {
+	url: string;
+	title: string;
+	sourcePath?: string;
+}
+
 /** Tab data saved for session restore. */
 export interface PersistedTab {
 	url: string;
 	title: string;
 	favicon?: string;
+	customTitle?: string;
+	titlePinned?: boolean;
 }
 
 /** Workspace / plugin session snapshot for the browser view. */
@@ -210,6 +231,8 @@ export function parseBrowserViewState(state: unknown): BrowserViewState | null {
 			url: tab.url,
 			title: typeof tab.title === "string" ? tab.title : tab.url,
 			favicon: typeof tab.favicon === "string" ? tab.favicon : undefined,
+			customTitle: typeof tab.customTitle === "string" ? tab.customTitle : undefined,
+			titlePinned: tab.titlePinned === true,
 		});
 	}
 	if (tabs.length === 0) return null;

@@ -35,6 +35,8 @@ export class WebviewEngine {
 	private resizeObserver: ResizeObserver | null = null;
 	private boundHandlers: Array<{ event: string; handler: EventListener }> = [];
 	private hasStartedLoad = false;
+	private isAttached = false;
+	private pendingSrc: string | null = null;
 	onStuck?: () => void;
 
 	constructor(
@@ -83,25 +85,46 @@ export class WebviewEngine {
 			return;
 		}
 
+		if (!this.isAttached) {
+			this.pendingSrc = url;
+			return;
+		}
+
+		this.applySrc(url);
+	}
+
+	syncLayout(): void {
+		this.syncWebviewSize();
+	}
+
+	private applySrc(url: string): void {
+		if (!this.webview) return;
+
 		this.hasStartedLoad = false;
 		this.webview.src = url;
 		this.syncWebviewSize();
 
-		// If webview never fires load events, signal parent to try iframe
-		window.setTimeout(() => {
-			if (!this.hasStartedLoad) {
-				log.warn("Webview did not start loading:", url);
-				this.onStuck?.();
-			}
-		}, 2500);
+		if (this.onStuck) {
+			window.setTimeout(() => {
+				if (!this.hasStartedLoad) {
+					log.warn("Webview did not start loading:", url);
+					this.onStuck?.();
+				}
+			}, 2500);
+		}
 	}
 
 	private syncWebviewSize(): void {
 		if (!this.webview || !this.container) return;
-		const height = this.container.clientHeight;
-		if (height > 0) {
-			this.webview.setCssProps({ height: `${height}px` });
-		}
+		const rect = this.container.getBoundingClientRect();
+		const width = Math.max(Math.floor(rect.width), 200);
+		const height = Math.max(Math.floor(rect.height), 200);
+		this.webview.setCssProps({
+			width: `${width}px`,
+			height: `${height}px`,
+			flex: "1 1 auto",
+			minHeight: "0",
+		});
 	}
 
 	goBack(): void {
@@ -191,6 +214,8 @@ export class WebviewEngine {
 	destroy(): void {
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
+		this.pendingSrc = null;
+		this.isAttached = false;
 		if (this.webview) {
 			for (const { event, handler } of this.boundHandlers) {
 				this.webview.removeEventListener(event, handler);
@@ -208,11 +233,23 @@ export class WebviewEngine {
 		};
 
 		add("did-attach", () => {
+			this.isAttached = true;
 			this.syncWebviewSize();
+			if (this.pendingSrc) {
+				const url = this.pendingSrc;
+				this.pendingSrc = null;
+				this.applySrc(url);
+			}
 		});
 
 		add("dom-ready", () => {
+			this.isAttached = true;
 			this.syncWebviewSize();
+			if (this.pendingSrc) {
+				const url = this.pendingSrc;
+				this.pendingSrc = null;
+				this.applySrc(url);
+			}
 		});
 
 		add("did-start-loading", () => {

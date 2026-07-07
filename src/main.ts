@@ -3,6 +3,7 @@ import {
 	BROWSER_VIEW_TYPE,
 	WEB_PAGE_VIEW_TYPE,
 	DEFAULT_SETTINGS,
+	parseWebPageState,
 	type BrowserPluginSettings,
 } from "./types";
 import { BrowserView } from "./ui/browser-view";
@@ -13,7 +14,7 @@ import { BookmarkManager } from "./bookmarks/bookmark-manager";
 import { registerCommands } from "./commands/commands";
 import { detectCompatibility } from "./browser/compatibility";
 import { parsePluginData, type PluginData } from "./utils/plugin-data";
-import type { BrowserSessionSnapshot } from "./types";
+import type { BrowserSessionSnapshot, PersistedWebPage } from "./types";
 import {
 	buildWebpageFileContent,
 	pageNoteExtension,
@@ -30,6 +31,7 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 	historyManager = new HistoryManager();
 	bookmarkManager = new BookmarkManager();
 	private browserSession: BrowserSessionSnapshot | null = null;
+	private openPages: PersistedWebPage[] = [];
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -64,10 +66,12 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 		this.app.workspace.onLayoutReady(() => {
 			if (!this.settings.restoreSessionOnStartup) return;
 			const session = this.getBrowserSession();
-			if (!session || session.tabs.length === 0) return;
-			if (this.app.workspace.getLeavesOfType(BROWSER_VIEW_TYPE).length === 0) {
-				void this.activateBrowserView();
+			if (session && session.tabs.length > 0) {
+				if (this.app.workspace.getLeavesOfType(BROWSER_VIEW_TYPE).length === 0) {
+					void this.activateBrowserView();
+				}
 			}
+			void this.restoreOpenPages();
 		});
 
 		this.registerEvent(
@@ -121,6 +125,7 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 		if (data.history) this.historyManager.deserialize(data.history);
 		if (data.bookmarks) this.bookmarkManager.deserialize(data.bookmarks);
 		this.browserSession = data.session ?? null;
+		this.openPages = data.openPages ?? [];
 	}
 
 	async savePersistedData(): Promise<void> {
@@ -130,6 +135,7 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 		if (this.browserSession) {
 			data.session = this.browserSession;
 		}
+		data.openPages = this.openPages;
 		await this.saveData(data);
 	}
 
@@ -142,7 +148,59 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 		data.session = this.browserSession;
 		data.history = this.historyManager.serialize();
 		data.bookmarks = this.bookmarkManager.serialize();
+		data.openPages = this.openPages;
 		await this.saveData(data);
+	}
+
+	registerOpenPage(page: PersistedWebPage): void {
+		if (!page.url) return;
+
+		const bySource = page.sourcePath
+			? this.openPages.findIndex((entry) => entry.sourcePath === page.sourcePath)
+			: -1;
+		if (bySource >= 0) {
+			this.openPages[bySource] = page;
+		} else {
+			const byUrl = this.openPages.findIndex((entry) => entry.url === page.url);
+			if (byUrl >= 0) this.openPages[byUrl] = page;
+			else this.openPages.push(page);
+		}
+
+		void this.saveOpenPages();
+	}
+
+	unregisterOpenPage(url: string, sourcePath?: string): void {
+		if (!url) return;
+		const before = this.openPages.length;
+		this.openPages = this.openPages.filter((entry) => {
+			if (sourcePath && entry.sourcePath === sourcePath) return false;
+			return entry.url !== url;
+		});
+		if (this.openPages.length !== before) {
+			void this.saveOpenPages();
+		}
+	}
+
+	private async saveOpenPages(): Promise<void> {
+		const data = await readPluginData(this);
+		data.openPages = this.openPages;
+		await this.saveData(data);
+	}
+
+	private async restoreOpenPages(): Promise<void> {
+		if (this.openPages.length === 0) return;
+
+		const openUrls = new Set(
+			this.app.workspace
+				.getLeavesOfType(WEB_PAGE_VIEW_TYPE)
+				.map((leaf) => parseWebPageState(leaf.getViewState().state)?.url)
+				.filter((url): url is string => Boolean(url)),
+		);
+
+		for (const page of this.openPages) {
+			if (openUrls.has(page.url)) continue;
+			await this.openWebPage(page.url, page.title, page.sourcePath, false);
+		}
 	}
 
 	getBrowserSession(): BrowserSessionSnapshot | null {
@@ -162,17 +220,34 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 		return leaf.view instanceof BrowserView ? leaf.view : null;
 	}
 
-	async openWebPage(url: string, title?: string, sourcePath?: string): Promise<WebPageView | null> {
-		if (!url) return null;
+	async openWebPage(
+		url: string,
+		title?: string,
+		sourcePath?: string,
+		saveNote = true,
+	): Promise<WebPageView | null> {
+		if (!url || url.startsWith("blob:") || url.startsWith("data:")) {
+			new Notice("This page cannot be opened as a standalone tab.");
+			return null;
+		}
+
+		let notePath = sourcePath;
+		if (saveNote && !notePath) {
+			const file = await this.savePageNote(url, title || "Web Page");
+			notePath = file?.path;
+		}
 
 		const leaf = this.app.workspace.getLeaf(false);
 		await leaf.setViewState({
 			type: WEB_PAGE_VIEW_TYPE,
-			state: { url, title: title ?? "", sourcePath },
+			state: { url, title: title ?? "", sourcePath: notePath },
 			active: true,
 		});
 		await this.app.workspace.revealLeaf(leaf);
-		return leaf.view instanceof WebPageView ? leaf.view : null;
+
+		const view = leaf.view instanceof WebPageView ? leaf.view : null;
+		view?.openPage(url, title, notePath);
+		return view;
 	}
 
 	async savePageNote(url: string, title: string, folder?: string): Promise<TFile | null> {
@@ -242,6 +317,9 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 					state: { url: data.url, title: data.title, sourcePath: file.path },
 					active: true,
 				});
+				if (leaf.view instanceof WebPageView) {
+					leaf.view.openPage(data.url, data.title, file.path);
+				}
 			})();
 		});
 	}

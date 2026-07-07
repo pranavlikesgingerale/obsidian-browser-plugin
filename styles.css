@@ -268,6 +268,18 @@
 	display: flex;
 	flex: 1;
 	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: thin;
+	scroll-behavior: smooth;
+}
+
+.local-html-browser-tab-list::-webkit-scrollbar {
+	height: 4px;
+}
+
+.local-html-browser-tab-list::-webkit-scrollbar-thumb {
+	background: var(--background-modifier-border);
+	border-radius: 4px;
 }
 
 .local-html-browser-tab {
@@ -275,14 +287,36 @@
 	align-items: center;
 	gap: 6px;
 	padding: 4px 8px 4px 10px;
-	max-width: 200px;
-	min-width: 100px;
+	max-width: 220px;
+	min-width: 80px;
+	height: 32px;
 	border-right: 1px solid var(--background-modifier-border);
 	cursor: pointer;
 	font-size: 12px;
 	color: var(--text-muted);
-	transition: background 0.15s;
-	flex-shrink: 0;
+	transition: background 0.15s, opacity 0.15s;
+	flex-shrink: 1;
+	position: relative;
+	user-select: none;
+}
+
+.local-html-browser-tab.is-dragging {
+	opacity: 0.5;
+}
+
+.local-html-browser-tab.is-drop-target::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 4px;
+	bottom: 4px;
+	width: 2px;
+	background: var(--interactive-accent);
+	border-radius: 1px;
+}
+
+.local-html-browser-tab.is-custom-title .local-html-browser-tab-title {
+	font-style: italic;
 }
 
 .local-html-browser-tab:hover {
@@ -296,7 +330,39 @@
 }
 
 .local-html-browser-tab.is-loading .local-html-browser-tab-title {
-	opacity: 0.6;
+	opacity: 0.7;
+}
+
+.local-html-browser-tab.is-loading .local-html-browser-tab-icon::after {
+	content: "";
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	margin-left: 2px;
+	border: 2px solid var(--text-faint);
+	border-top-color: var(--interactive-accent);
+	border-radius: 50%;
+	animation: local-html-browser-tab-spin 0.8s linear infinite;
+	vertical-align: middle;
+}
+
+@keyframes local-html-browser-tab-spin {
+	to { transform: rotate(360deg); }
+}
+
+.local-html-browser-tab-rename-input {
+	flex: 1;
+	min-width: 0;
+	padding: 2px 6px;
+	border: 1px solid var(--interactive-accent);
+	border-radius: 4px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: 12px;
+}
+
+.local-html-browser-tab.is-renaming {
+	max-width: 280px;
 }
 
 .local-html-browser-tab-favicon {
@@ -510,6 +576,22 @@
 	overflow: hidden;
 	min-height: 0;
 	position: relative;
+}
+
+.local-html-browser-page-content .local-html-browser-engine-container {
+	flex: 1 1 auto;
+	min-height: 0;
+	height: 100%;
+	width: 100%;
+}
+
+.local-html-browser-page-content .local-html-browser-webview,
+.local-html-browser-page-content .local-html-browser-iframe {
+	display: flex;
+	flex: 1 1 auto;
+	width: 100%;
+	height: 100%;
+	min-height: 200px;
 }
 
 .local-html-browser-page-status {

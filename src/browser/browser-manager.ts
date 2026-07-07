@@ -27,6 +27,12 @@ export interface BrowserEngine {
 	updateSettings(settings: BrowserPluginSettings): void;
 	destroy(): void;
 	getEngineType(): BrowserEngineType;
+	syncLayout?(): void;
+}
+
+export interface BrowserManagerOptions {
+	/** When false, never fall back to iframe (needed for local SPAs in page tabs). */
+	allowIframeFallback?: boolean;
 }
 
 export class BrowserManager {
@@ -39,6 +45,7 @@ export class BrowserManager {
 	constructor(
 		private settings: BrowserPluginSettings,
 		private events: BrowserEngineEvents,
+		private options: BrowserManagerOptions = {},
 	) {}
 
 	initialize(container: HTMLElement): BrowserEngineType {
@@ -47,7 +54,9 @@ export class BrowserManager {
 
 		if (compat.engineRecommendation === "webview") {
 			const webview = new WebviewEngine(this.settings, this.events);
-			webview.onStuck = () => this.fallbackToIframe(this.lastUrl);
+			if (this.options.allowIframeFallback !== false) {
+				webview.onStuck = () => this.fallbackToIframe(this.lastUrl);
+			}
 			if (webview.mount(container)) {
 				this.engine = webview;
 				this.engineType = "webview";
@@ -181,5 +190,9 @@ export class BrowserManager {
 
 	getEngineType(): BrowserEngineType {
 		return this.engineType;
+	}
+
+	syncLayout(): void {
+		this.engine?.syncLayout?.();
 	}
 }
