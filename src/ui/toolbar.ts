@@ -1,5 +1,6 @@
 import { setIcon } from "obsidian";
 import { createRootDiv } from "../utils/dom";
+import { nodeInstanceOf } from "../utils/obsidian-compat";
 
 /** Toolbar button definitions and factory. */
 export interface ToolbarCallbacks {
@@ -81,8 +82,8 @@ export class Toolbar {
 		const buttons = this.el.querySelectorAll(".local-html-browser-nav-group button");
 		const backBtn = buttons[0];
 		const forwardBtn = buttons[1];
-		if (backBtn?.instanceOf(HTMLButtonElement)) backBtn.disabled = !canBack;
-		if (forwardBtn?.instanceOf(HTMLButtonElement)) forwardBtn.disabled = !canForward;
+		if (nodeInstanceOf(backBtn, HTMLButtonElement)) backBtn.disabled = !canBack;
+		if (nodeInstanceOf(forwardBtn, HTMLButtonElement)) forwardBtn.disabled = !canForward;
 	}
 
 	private createNavButton(

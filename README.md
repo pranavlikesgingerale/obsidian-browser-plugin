@@ -58,7 +58,9 @@ Use these values in `community-plugins.json` — they must match `manifest.json`
 }
 ```
 
-Release tag must match `manifest.json` version (e.g. `1.0.1`). Attach `main.js`, `manifest.json`, and `styles.css` to the GitHub release.
+Release tag must match `manifest.json` version (e.g. `1.1.0`). Attach `main.js`, `manifest.json`, and `styles.css` to the GitHub release.
+
+**minAppVersion:** `1.12.7` (Obsidian 1.13+ still supported; declarative settings used when available).
 
 Plugin ID rules: lowercase + hyphens only, no `obsidian` in the id, must not end with `plugin`.
 

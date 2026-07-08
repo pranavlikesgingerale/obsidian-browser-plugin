@@ -2,6 +2,7 @@ import type { BrowserEngineEvents, BrowserPluginSettings } from "../types";
 import { buildWebPreferences } from "./compatibility";
 import { Logger } from "../utils/logger";
 import { createElement } from "../utils/dom";
+import { setElementCssProps } from "../utils/obsidian-compat";
 
 const log = new Logger("webview");
 
@@ -140,7 +141,7 @@ export class WebviewEngine {
 
 		const width = Math.max(Math.floor(rect.width), 200);
 		const height = Math.max(Math.floor(rect.height), 200);
-		this.webview.setCssProps({
+		setElementCssProps(this.webview, {
 			width: `${width}px`,
 			height: `${height}px`,
 			flex: "1 1 auto",

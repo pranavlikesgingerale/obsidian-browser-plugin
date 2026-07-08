@@ -1,3 +1,5 @@
+import { nodeInstanceOf } from "./obsidian-compat";
+
 interface ObsidianWindowHost {
 	createDiv(): HTMLElement;
 	createEl(tag: string, o?: Record<string, string | number | boolean | undefined>): HTMLElement;
@@ -9,16 +11,16 @@ function getObsidianWin(doc: Document): ObsidianWindowHost {
 
 /** DOM helpers for popout-window compatibility. */
 export function getActiveDocument(): Document {
-	if (typeof activeDocument === "undefined") {
-		throw new Error("activeDocument is unavailable in this context.");
+	if (typeof activeDocument !== "undefined") {
+		return activeDocument;
 	}
-	return activeDocument;
+	return document;
 }
 
 /** Obsidian ItemView content area (second child of containerEl). */
 export function getViewContentContainer(containerEl: HTMLElement): HTMLElement {
 	const child = containerEl.children[1];
-	if (!child?.instanceOf(HTMLElement)) {
+	if (!nodeInstanceOf(child, HTMLElement)) {
 		throw new Error("View content container not found.");
 	}
 	return child;
