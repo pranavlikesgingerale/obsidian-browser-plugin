@@ -5,6 +5,8 @@ import { createElement } from "../utils/dom";
 
 const log = new Logger("webview");
 
+const STUCK_LOAD_TIMEOUT_MS = 8000;
+
 /** Electron webview element with typed methods. */
 export interface WebviewElement extends HTMLElement {
 	src: string;
@@ -37,6 +39,7 @@ export class WebviewEngine {
 	private hasStartedLoad = false;
 	private isAttached = false;
 	private pendingSrc: string | null = null;
+	private stuckTimer: number | null = null;
 	onStuck?: () => void;
 
 	constructor(
@@ -100,23 +103,41 @@ export class WebviewEngine {
 	private applySrc(url: string): void {
 		if (!this.webview) return;
 
+		this.clearStuckTimer();
 		this.hasStartedLoad = false;
 		this.webview.src = url;
 		this.syncWebviewSize();
 
 		if (this.onStuck) {
-			window.setTimeout(() => {
+			this.stuckTimer = window.setTimeout(() => {
+				this.stuckTimer = null;
 				if (!this.hasStartedLoad) {
 					log.warn("Webview did not start loading:", url);
 					this.onStuck?.();
 				}
-			}, 2500);
+			}, STUCK_LOAD_TIMEOUT_MS);
+		}
+	}
+
+	private flushPendingSrc(): void {
+		if (!this.pendingSrc) return;
+		const url = this.pendingSrc;
+		this.pendingSrc = null;
+		this.applySrc(url);
+	}
+
+	private clearStuckTimer(): void {
+		if (this.stuckTimer !== null) {
+			window.clearTimeout(this.stuckTimer);
+			this.stuckTimer = null;
 		}
 	}
 
 	private syncWebviewSize(): void {
 		if (!this.webview || !this.container) return;
 		const rect = this.container.getBoundingClientRect();
+		if (rect.width <= 0 || rect.height <= 0) return;
+
 		const width = Math.max(Math.floor(rect.width), 200);
 		const height = Math.max(Math.floor(rect.height), 200);
 		this.webview.setCssProps({
@@ -212,6 +233,7 @@ export class WebviewEngine {
 	}
 
 	destroy(): void {
+		this.clearStuckTimer();
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
 		this.pendingSrc = null;
@@ -235,31 +257,24 @@ export class WebviewEngine {
 		add("did-attach", () => {
 			this.isAttached = true;
 			this.syncWebviewSize();
-			if (this.pendingSrc) {
-				const url = this.pendingSrc;
-				this.pendingSrc = null;
-				this.applySrc(url);
-			}
+			this.flushPendingSrc();
 		});
 
 		add("dom-ready", () => {
 			this.isAttached = true;
 			this.syncWebviewSize();
-			if (this.pendingSrc) {
-				const url = this.pendingSrc;
-				this.pendingSrc = null;
-				this.applySrc(url);
-			}
 		});
 
 		add("did-start-loading", () => {
 			this.hasStartedLoad = true;
+			this.clearStuckTimer();
 			this.events.onLoadStart();
 			this.events.onLoadingStateChange(true);
 		});
 
 		add("did-stop-loading", () => {
 			this.hasStartedLoad = true;
+			this.clearStuckTimer();
 			this.events.onLoadStop();
 			this.events.onLoadingStateChange(false);
 			this.syncWebviewSize();

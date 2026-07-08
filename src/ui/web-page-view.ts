@@ -147,6 +147,20 @@ export class WebPageView extends ItemView {
 			);
 		}
 
+		this.registerEvent(
+			this.app.workspace.on("layout-change", () => {
+				this.browserManager?.syncLayout();
+			}),
+		);
+
+		this.registerEvent(
+			this.app.workspace.on("active-leaf-change", (leaf) => {
+				if (leaf?.view === this) {
+					this.browserManager?.syncLayout();
+				}
+			}),
+		);
+
 		this.registerDomEvent(this.contentEl_, "transitionend", () => {
 			this.browserManager?.syncLayout();
 		});

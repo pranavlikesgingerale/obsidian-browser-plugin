@@ -99,11 +99,15 @@ function markdownToHtmlPreview(markdown: string, sourcePath: string): string {
 		.map((p) => (p.startsWith("<h") || p.startsWith("<pre") ? p : `<p>${p.replace(/\n/g, "<br>")}</p>`))
 		.join("\n");
 
+	const pathMod = getPath();
+	const baseDir = pathMod?.dirname(sourcePath) ?? sourcePath;
+	const baseHref = pathToFileUrl(baseDir);
+
 	return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<base href="${pathToFileUrl(sourcePath)}">
+<base href="${baseHref}">
 <title>Markdown Preview</title>
 <style>
 body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; line-height: 1.6; padding: 0 1rem; }

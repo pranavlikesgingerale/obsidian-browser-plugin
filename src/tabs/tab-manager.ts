@@ -161,12 +161,23 @@ export class TabManager {
 	serializeSession(): { tabs: PersistedTab[]; activeTabIndex: number } {
 		const tabs: PersistedTab[] = [];
 		let activeTabIndex = 0;
+		let activeIsPersistable = false;
+		let fallbackIndex = 0;
+		let fallbackTime = 0;
 
 		for (const tab of this.tabs) {
 			if (!isPersistableBrowserUrl(tab.url)) continue;
+
+			const persistIndex = tabs.length;
 			if (tab.id === this.activeTabId) {
-				activeTabIndex = tabs.length;
+				activeTabIndex = persistIndex;
+				activeIsPersistable = true;
 			}
+			if (tab.lastActiveAt >= fallbackTime) {
+				fallbackTime = tab.lastActiveAt;
+				fallbackIndex = persistIndex;
+			}
+
 			tabs.push({
 				url: tab.url,
 				title: tab.title || tab.url,
@@ -174,6 +185,10 @@ export class TabManager {
 				customTitle: tab.customTitle,
 				titlePinned: tab.titlePinned,
 			});
+		}
+
+		if (!activeIsPersistable && tabs.length > 0) {
+			activeTabIndex = fallbackIndex;
 		}
 
 		return { tabs, activeTabIndex: tabs.length > 0 ? activeTabIndex : 0 };

@@ -55,7 +55,13 @@ export class BrowserManager {
 		if (compat.engineRecommendation === "webview") {
 			const webview = new WebviewEngine(this.settings, this.events);
 			if (this.options.allowIframeFallback !== false) {
-				webview.onStuck = () => this.fallbackToIframe(this.lastUrl);
+				webview.onStuck = () => {
+					if (/^file:\/\//i.test(this.lastUrl)) {
+						log.warn("Webview slow on local file — keeping webview (iframe breaks SPAs).");
+						return;
+					}
+					this.fallbackToIframe(this.lastUrl);
+				};
 			}
 			if (webview.mount(container)) {
 				this.engine = webview;
@@ -92,7 +98,9 @@ export class BrowserManager {
 				if (ext.endsWith(".md") || ext.endsWith(".markdown")) {
 					const blob = new Blob([resolved.content ?? ""], { type: "text/html" });
 					const reader = new FileReader();
+					const requestUrl = url;
 					reader.onload = () => {
+						if (this.lastUrl !== requestUrl) return;
 						if (typeof reader.result === "string") {
 							this.engine?.loadUrl(reader.result);
 						}

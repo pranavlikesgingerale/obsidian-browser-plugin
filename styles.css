@@ -449,6 +449,14 @@
 	overflow: hidden;
 	position: relative;
 	min-height: 0;
+	height: 100%;
+}
+
+.local-html-browser-content .local-html-browser-engine-container {
+	flex: 1 1 auto;
+	min-height: 0;
+	height: 100%;
+	width: 100%;
 }
 
 .local-html-browser-webview,

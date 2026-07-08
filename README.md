@@ -52,9 +52,9 @@ Use these values in `community-plugins.json` — they must match `manifest.json`
 {
   "id": "local-html-browser",
   "name": "Local HTML Browser",
-  "author": "sumbass",
+  "author": "pranavshantagiri",
   "description": "Run local file:// HTML apps with full browser behavior — SPAs, hash routes, and live page tabs.",
-  "repo": "sumbass/Obsidian_browser_plugin"
+  "repo": "pranavshantagiri/Obsidian_browser_plugin"
 }
 ```
 

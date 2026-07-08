@@ -36,6 +36,18 @@ export class HistoryManager {
 		}
 	}
 
+	/** Update the most recent history entry matching a URL (e.g. after page title loads). */
+	updateTitleForUrl(url: string, title: string): void {
+		if (!url || !title || !isPersistableBrowserUrl(url)) return;
+
+		for (let i = this.entries.length - 1; i >= 0; i--) {
+			if (this.entries[i].url === url) {
+				this.entries[i].title = title;
+				return;
+			}
+		}
+	}
+
 	removeEntry(id: string): boolean {
 		const index = this.entries.findIndex((entry) => entry.id === id);
 		if (index === -1) return false;

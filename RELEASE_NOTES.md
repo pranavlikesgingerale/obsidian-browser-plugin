@@ -3,69 +3,92 @@
 **Use this as the GitHub release title (must include the version):**
 
 ```
-Local HTML Browser 1.0.4
+Local HTML Browser 1.0.5
 ```
 
-**Tag:** `1.0.4`  
+**Tag:** `1.0.5`  
 **Requires Obsidian 1.13.0+** · Desktop only
 
-Attach `main.js`, `manifest.json`, and `styles.css` from this release.
+Attach `main.js`, `manifest.json`, and `styles.css` from this release (run `npm run build` first).
 
 ---
 
-## Changes in 1.0.4
+## Summary
 
-### History
+Version 1.0.5 is a **reliability release**. It fixes blank screens when opening pages or switching tabs, cleans up history behavior, and improves session restore. Also updates the GitHub author to **pranavshantagiri**.
 
-- Navigation history is **saved to disk** (persistable URLs only — not blob/data/about:blank)
-- **History panel** — click the clock icon in the toolbar, or run **Browser: Show history**
-- Search history, open a past page, delete individual entries, or clear all
-- Command: **Browser: Clear history**
+---
+
+## Reliability fixes
+
+### Page loading (blank screen fixes)
+
+- **Deferred loading** — browser and page tabs wait until the content area has real dimensions before navigating (fixes 0-height webview)
+- **Layout sync** — webview resizes on workspace layout changes, pane focus, and split resize
+- **Smarter webview startup** — loads only after `did-attach`; clears stuck-load timers correctly
+- **No iframe fallback for local files** — slow `file://` loads stay on webview (iframe breaks SPAs)
+- **Longer stuck timeout** — 8 seconds instead of 2.5 before considering a load stuck
+- **Standalone page tabs** — same deferred-load and layout-sync behavior as the main browser
+
+### Tab switching
+
+- **Snapshot URL before switch** — outgoing tab saves the live webview URL before switching away
+- **No history spam** — tab switches and session restore no longer add fake history entries
+- **Welcome tabs** — blob welcome pages no longer overwrite tab URLs (fixes broken restore/switch)
+- **Session active tab** — correct tab restored when the active tab was a welcome/new tab
 
 ### Session restore
 
-- **Restore session on startup** (Settings → Local HTML Browser) — reopen your last tabs when you launch Obsidian or open the browser
-- Tabs and active page are saved automatically as you browse
-- Works with Obsidian workspace layout restore (`getState` / `setState` on the browser view)
-- If the browser pane was closed before quitting, it reopens on startup when session restore is enabled
+- **Fresher session data** — prefers plugin-saved session (on quit) over stale workspace state when restore is enabled
 
-### Tab bar
+### History
 
-- **Rename tabs** — double-click a tab, press F2, or use **Browser: Rename tab** / right-click → Rename tab
-- Custom names persist across sessions; **Reset title** restores the page title
-- **Drag tabs** to reorder; scroll the tab strip with the mouse wheel when many tabs are open
-- **Middle-click** a tab to close it
-- Right-click menu: duplicate, close, close others, close tabs to the right
-- Keyboard shortcuts: **Ctrl+T** new tab, **Ctrl+W** close, **Ctrl+Shift+T** reopen closed, **Ctrl+Tab** / **Ctrl+Shift+Tab** cycle tabs
-- Links that open a new window open in a **new tab** instead of replacing the current one
+- **Correct titles** — history updates when the page title loads (not just at navigate time)
+- **Live panel** — history panel refreshes while open as you browse
+- **Cleaner entries** — welcome/blob navigations are excluded from history and tab state
 
-### Standalone page tabs
+### Other
 
-- **Open as page** now loads with the same webview engine as the browser (no broken iframe fallback)
-- Automatically saves a **`.webpage` vault note** in your Browser Pages folder
-- Page tabs restore on startup when session restore is enabled
-- Reopen saved pages from the vault by clicking the `.webpage` file
+- **Auto-refresh in browser view** — file watcher reload now works in the main browser (was only on page tabs)
+- **Iframe back/forward** — fixed history stack in fallback mode
+- **Markdown preview** — relative assets resolve from the file’s directory, not the file path itself
+- **Author** — `manifest.json` author URL updated to [pranavshantagiri](https://github.com/pranavshantagiri)
 
 ---
 
-## Upgrade from 1.0.3
+## Upgrade from 1.0.4
 
 1. Run `npm run build` (or download release artifacts)
 2. Replace `main.js`, `manifest.json`, and `styles.css` in `.obsidian/plugins/local-html-browser/`
 3. Reload Obsidian
 
+If you submit to the Obsidian community plugin list, update `community-plugins.json` repo to `pranavshantagiri/Obsidian_browser_plugin`.
+
+---
+
+## Quick test checklist
+
+- [ ] Open a local HTML app — page loads (not blank)
+- [ ] Switch tabs back and forth — correct pages, no extra history entries
+- [ ] Close and reopen Obsidian — tabs restore to the right page
+- [ ] Open history while browsing — new entries appear with correct titles
+- [ ] **Open as page** — standalone tab loads the same content
+- [ ] Resize the Obsidian pane — page stays visible (no blank webview)
+
 ---
 
 ## Previous releases
 
+### 1.0.4
+
+- History panel and persisted navigation history
+- Session restore on startup
+- Browser-like tab bar with rename, drag-reorder, shortcuts
+- Standalone page tabs with `.webpage` vault notes
+
 ### 1.0.3
 
-- Obsidian community plugin review fixes (declarative settings, lint, API compliance)
-- Raised `minAppVersion` to **1.13.0**
-
-### 1.0.2
-
-- First review pass: Platform API, CSS classes, typed Electron helpers
+- Obsidian community plugin review fixes; `minAppVersion` 1.13.0
 
 ### 1.0.1
 

@@ -77,21 +77,18 @@ export class IframeFallbackEngine {
 
 		const normalized = normalizeInputToUrl(url);
 
-		// For http(s), load directly
 		if (/^https?:\/\//i.test(normalized)) {
-			this.loadDirect(normalized);
+			this.loadDirect(normalized, true);
 			return;
 		}
 
-		// Try loading file:// directly first — needed for SPAs with bundled assets
 		if (/^file:\/\//i.test(normalized)) {
-			this.loadDirect(normalized);
+			this.loadDirect(normalized, true);
 			return;
 		}
 
-		// For file paths, read and inject via blob
 		const filePath = normalized.startsWith("file://")
-			? decodeURIComponent(normalized.replace(/^file:\/\//, "").replace(/^\/([A-Z]:)/, "$1"))
+			? decodeURIComponent(normalized.replace(/^file:\/\//, "").replace(/^\/([A-Za-z]:)/, "$1"))
 			: url;
 
 		const resolved = resolveLocalPath(filePath);
@@ -111,12 +108,12 @@ export class IframeFallbackEngine {
 		this.events.onNavigate(this.currentLogicalUrl);
 	}
 
-	private loadDirect(url: string): void {
+	private loadDirect(url: string, pushHistory: boolean): void {
 		if (!this.iframe) return;
 		this.revokeBlob();
 		this.iframe.src = url;
 		this.currentLogicalUrl = url;
-		this.pushHistory(url);
+		if (pushHistory) this.pushHistory(url);
 		this.events.onNavigate(url);
 	}
 
@@ -207,9 +204,36 @@ export class IframeFallbackEngine {
 		this.historyIndex = this.historyStack.length - 1;
 	}
 
+	syncLayout(): void {
+		// iframe uses CSS sizing
+	}
+
 	private navigateToHistoryIndex(): void {
 		const url = this.historyStack[this.historyIndex];
-		if (url) this.loadUrl(url);
+		if (!url || !this.iframe) return;
+
+		this.events.onLoadStart();
+		this.events.onLoadingStateChange(true);
+
+		if (/^https?:\/\//i.test(url) || /^file:\/\//i.test(url)) {
+			this.loadDirect(url, false);
+			return;
+		}
+
+		const filePath = url.startsWith("file://")
+			? decodeURIComponent(url.replace(/^file:\/\//, "").replace(/^\/([A-Za-z]:)/, "$1"))
+			: url;
+		const resolved = resolveLocalPath(filePath);
+		if (resolved.type === "error") {
+			this.events.onError(resolved.error ?? "Unknown error");
+			return;
+		}
+
+		this.revokeBlob();
+		this.currentBlobUrl = createBlobUrl(resolved.content ?? "", resolved.mimeType ?? "text/html");
+		this.currentLogicalUrl = resolved.url ?? url;
+		this.iframe.src = this.currentBlobUrl;
+		this.events.onNavigate(this.currentLogicalUrl);
 	}
 
 	private revokeBlob(): void {
