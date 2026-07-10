@@ -1,74 +1,144 @@
 # Local HTML Browser
 
-I use a local HTML app to manage my daily Notion tasks. It sits on my drive and runs over `file://` — no server, no hosting, just files. I wanted it inside Obsidian so I wasn't alt-tabbing to Chrome all day.
+An Obsidian plugin that opens local HTML in a real browser pane — not a preview iframe in a note, but something closer to opening the file in Chrome.
 
-Most plugins either stick HTML inside a note or run it in a locked-down iframe. I needed it to behave like opening the file in a real browser: JS works, relative paths work, storage works. This plugin uses Electron's webview when the app allows it, and falls back to an iframe when it doesn't.
+I built it because I run a local HTML app for daily tasks off `file://` on my drive. I wanted it inside Obsidian so I wasn’t switching to a separate browser all day. Most plugins either embed HTML in a note or run it in a sandboxed iframe. I needed relative paths, JavaScript, and storage to work the way they do when you open the file normally.
 
-Desktop only.
+The plugin uses Electron’s `<webview>` when Obsidian allows it. If webview isn’t available, it falls back to an iframe (SPAs and some local paths won’t work as well there).
+
+**Desktop only.** Mobile Obsidian doesn’t expose webview.
+
+---
 
 ## Install
+
+From source:
 
 ```bash
 npm install
 npm run build
 ```
 
-Copy `main.js`, `manifest.json`, and `styles.css` into:
+Copy these into your vault:
 
 ```
 .obsidian/plugins/local-html-browser/
+  main.js
+  manifest.json
+  styles.css
 ```
 
-Enable **Local HTML Browser** in Community plugins. Click the globe in the ribbon.
+Enable **Local HTML Browser** under Community plugins. The globe icon in the ribbon opens the browser.
 
-## Using it
+Requires **Obsidian 1.12.7+**.
 
-Paste a path in the address bar or use the file picker:
+---
+
+## Basic use
+
+Paste a path or URL in the address bar, or use the folder/file buttons on the toolbar:
 
 ```
-file:///C:/Projects/notion-tasks/index.html
+file:///C:/Projects/my-app/index.html
 ```
 
-Set it as your home URL in settings if that's what you open every morning.
+You can also type a hostname (`example.com`) and it will open over HTTPS.
 
-The bit I use day to day: open the app once, hit the layout icon on the toolbar (or **Browser: Open as page**), and it becomes its own tab — just the page, no browser chrome. Save it with the file-plus icon to write a `.webpage` file in `Browser Pages/`:
+Set a **Home URL** in settings if you always open the same page.
+
+### Page tabs
+
+If you want just the page without browser chrome:
+
+1. Open the page in the full browser view
+2. Click the layout icon on the toolbar (or run **Browser: Open as page**)
+
+It opens as its own Obsidian tab. Save a `.webpage` note to `Browser Pages/` with the file-plus icon:
 
 ```yaml
 ---
-url: file:///C:/Projects/notion-tasks/index.html
+url: file:///C:/Projects/my-app/index.html
 title: Daily Tasks
 ---
 ```
 
-Click that file later and it opens straight back. Or put `browser-page: true` and a `url` in any markdown note's frontmatter.
+Open that file later and it loads straight back.
 
-Full browser view: tabs, back/forward, bookmarks, DevTools (webview only), auto-refresh on save. Test page in `sample-vault/browser-test/`.
+### Tabs and shortcuts
 
-## Publishing / community plugin submission
+- **Ctrl+T** — new tab  
+- **Ctrl+W** — close tab  
+- **Ctrl+Shift+T** — reopen closed tab  
+- **Ctrl+Tab** — switch tabs  
+- **F2** or double-click — rename tab  
+- Middle-click a tab to close it  
 
-Use these values in `community-plugins.json` — they must match `manifest.json`:
+History is under the clock icon on the toolbar.
+
+---
+
+## Settings worth knowing
+
+| Setting | What it does |
+|--------|----------------|
+| **Allow local file access** | Required for `file://` and relative assets. Off = stricter web security. |
+| **Restore session on startup** | Reopens your last tabs when Obsidian starts. Turn off if reopening too many tabs uses too much memory. |
+| **Max tabs to restore** | Caps how many tabs come back (default 5). |
+| **Clear saved session** | Forgets saved tabs without wiping history or bookmarks. |
+| **Auto refresh** + **Watch file changes** | Reload when you save files on disk. |
+| **Block external internet** | Keeps navigation on local files only. |
+
+Full list under **Settings → Local HTML Browser**. The **Compatibility** section shows whether webview is available on your install.
+
+---
+
+## Commands
+
+A few useful ones from the command palette:
+
+- **Browser: Open local HTML browser**
+- **Browser: Show history**
+- **Browser: Clear history**
+- **Browser: Open as page**
+- **Browser: Rename tab**
+
+---
+
+## When something breaks
+
+**Status bar says Iframe Fallback** — webview isn’t available on this Obsidian build. Check Settings → Compatibility. Local SPAs usually need webview.
+
+**Blank page, spinner won’t stop** — update to 1.2.0+. If it persists, try **Clear saved session** and reload.
+
+**Relative paths don’t resolve** — enable **Allow local file access**.
+
+**DevTools** — only in webview mode (code icon on toolbar).
+
+**Auto-refresh** — both **Auto refresh** and **Watch file changes** need to be on.
+
+There’s a small test site in `sample-vault/browser-test/` if you want something local to poke at.
+
+---
+
+## Community plugin listing
+
+If you’re submitting or updating the community plugins index, use the same id and author as `manifest.json`:
 
 ```json
 {
   "id": "local-html-browser",
   "name": "Local HTML Browser",
   "author": "pranavshantagiri",
-  "description": "Run local file:// HTML apps with full browser behavior — SPAs, hash routes, and live page tabs.",
+  "description": "A browser pane inside Obsidian for local HTML files, with tabs, history, and optional web URLs.",
   "repo": "pranavshantagiri/Obsidian_browser_plugin"
 }
 ```
 
-Release tag must match `manifest.json` version (e.g. `1.1.0`). Attach `main.js`, `manifest.json`, and `styles.css` to the GitHub release.
+Release tags must match the version in `manifest.json`. Attach `main.js`, `manifest.json`, and `styles.css` to each GitHub release.
 
-**minAppVersion:** `1.12.7` (Obsidian 1.13+ still supported; declarative settings used when available).
+Plugin id rules: lowercase and hyphens only, no `obsidian` in the id, don’t end with `plugin`.
 
-Plugin ID rules: lowercase + hyphens only, no `obsidian` in the id, must not end with `plugin`.
-
-## If something's wrong
-
-**Iframe Fallback** in the status bar — webview isn't available on your build. Check Settings → Local HTML Browser → Compatibility.
-
-Relative paths: turn on **Allow local file access**. DevTools: webview mode only. Auto-refresh: enable both **Auto refresh** and **Watch file changes**.
+---
 
 ## License
 

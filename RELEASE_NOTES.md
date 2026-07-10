@@ -1,117 +1,92 @@
-# Release title
+# Local HTML Browser 1.2.0
 
-**Use this as the GitHub release title (must include the version):**
+**Tag:** `1.2.0`  
+**Obsidian:** 1.12.7 or newer  
+**Platform:** desktop only
 
-```
-Local HTML Browser 1.1.0
-```
-
-**Tag:** `1.1.0`  
-**Requires Obsidian 1.12.7+** · Desktop only
-
-Attach `main.js`, `manifest.json`, and `styles.css` from this release (run `npm run build` first).
+Attach `main.js`, `manifest.json`, and `styles.css` to the GitHub release (`npm run build` first).
 
 ---
 
-## Summary
+## 1.2.0
 
-**1.1.0** is the first major feature release after 1.0.3. It adds browser history, session restore, a full tab bar, standalone page tabs, reliability fixes for blank screens, and **Obsidian 1.12.7** support so the community store installs the latest version (not 1.0.1).
+This release fixes the blank viewport and stuck loading spinner that showed up after 1.1.0, plus a few things that were annoying in daily use.
 
----
+**Loading**
 
-## New features
+- The webview no longer sits on a pending URL forever when the pane has no size yet.
+- Failed loads and blocked external URLs clear the loading state instead of spinning forever.
+- Layout sync runs again after the load starts so the page actually paints once the pane is ready.
 
-### History
-- Navigation history saved to disk
-- History panel (toolbar clock icon or **Browser: Show history**)
-- Search, reopen, delete entries, or clear all
-- Command: **Browser: Clear history**
+**Address bar**
 
-### Session restore
-- **Restore session on startup** setting (on by default)
-- Browser tabs and active page restore after closing Obsidian
-- Standalone page tabs also restore when enabled
+- Hostnames like `google.com.in` open over HTTPS instead of being treated as a local file path.
+- Windows paths and `file://` URLs still work as before.
 
-### Tab bar
-- Rename tabs (double-click, F2, right-click, or **Browser: Rename tab**)
-- Drag to reorder, middle-click to close
-- Shortcuts: Ctrl+T, Ctrl+W, Ctrl+Shift+T, Ctrl+Tab
-- Right-click: duplicate, close others, close to the right
-- New-window links open in a new tab
+**Images**
 
-### Standalone page tabs
-- **Open as page** uses webview (fixes blank screen for local SPAs)
-- Auto-saves `.webpage` notes to `Browser Pages/`
-- Reopen from vault or on startup
+- PNG, JPEG, GIF, WebP, BMP, and ICO open from the file picker or a path in the address bar.
 
----
+**History**
 
-## Reliability fixes
+- The history panel groups entries under Today, Yesterday, and older dates.
 
-- Deferred loading until the webview container has size (fixes blank pages)
-- Layout sync when resizing panes or switching tabs
-- Tab switching no longer pollutes history
-- History titles update when the page title loads
-- Session restore uses fresher saved state
-- Welcome/blob pages no longer break tab restore
-- Auto-refresh on file save works in the main browser view
+**Session restore**
+
+- Turning off **Restore session on startup** now actually stops tabs from coming back (including from Obsidian’s saved leaf state).
+- **Max tabs to restore** (default 5) limits how many tabs reopen after a restart.
+- **Clear saved session** drops stored tabs and standalone page tabs without touching bookmarks or history.
+
+**Tab bar**
+
+- The loading spinner no longer draws on top of the tab icon.
 
 ---
 
-## Obsidian 1.12.7 compatibility
+## Upgrade
 
-- `minAppVersion` lowered to **1.12.7** (was 1.13.0 in 1.0.3)
-- Legacy **`display()`** settings for Obsidian 1.12.x
-- **`getSettingDefinitions()`** kept for Obsidian 1.13+ settings search
-- Fixes store showing only **1.0.1** on Obsidian 1.12.7
-
----
-
-## Other
-
-- GitHub author updated to **pranavshantagiri**
-
----
-
-## Upgrade from 1.0.3 or 1.0.1
-
-1. Install **1.1.0** from the community plugin store, or manually replace files in `.obsidian/plugins/local-html-browser/`
+1. Replace the plugin files in `.obsidian/plugins/local-html-browser/`
 2. Reload Obsidian
 
+From 1.1.0 or 1.1.1 you can upgrade in place. Settings are kept.
+
 ---
 
-## Publish commands
+## 1.1.0
+
+First big release after 1.0.x: history, session restore, tab bar, standalone page tabs, and Obsidian 1.12.7 support.
+
+---
+
+## 1.0.x
+
+Initial releases. Basic browser view with webview/iframe fallback.
+
+---
+
+## Publish (maintainer)
 
 ```bash
 npm run build
 
 git add main.js manifest.json styles.css versions.json package.json
-git commit -m "Release 1.1.0"
+git commit -m "Release 1.2.0"
 git push origin main
 
-git tag 1.1.0
-git push origin 1.1.0
+git tag 1.2.0
+git push origin 1.2.0
 ```
 
-Then on GitHub: **Releases → New release → tag `1.1.0`**  
-Upload `main.js`, `manifest.json`, `styles.css`.
+GitHub: **Releases → New release → tag `1.2.0`**, upload the three plugin files.
 
-If listed in the community store, ensure `community-plugins.json` has:
+Community store entry (must match `manifest.json`):
 
 ```json
-"author": "pranavshantagiri",
-"repo": "pranavshantagiri/obsidian-browser-plugin"
+{
+  "id": "local-html-browser",
+  "name": "Local HTML Browser",
+  "author": "pranavshantagiri",
+  "description": "A browser pane inside Obsidian for local HTML files, with tabs, history, and optional web URLs.",
+  "repo": "pranavshantagiri/Obsidian_browser_plugin"
+}
 ```
-
----
-
-## 1.1.1
-
-Hotfix for blank pages, stuck loading UI, history layout, images, and session restore memory after 1.1.0.
-
-### Fixes
-- **Blank page:** Webview loads even when the pane briefly reports zero size; pending URLs flush on attach/`dom-ready` with a short fallback timer.
-- **Stuck spinner:** Failed loads and blocked external URLs clear loading state; tab spinner no longer overlaps the globe/favicon.
-- **Local paths & images:** Multi-part domains (`google.com.in`) open as HTTPS; PNG/JPEG/GIF/WebP and other images open from disk/file picker.
-- **History:** Entries grouped by Today / Yesterday / date with sticky section headers.
-- **Session restore:** “Restore session on startup” fully disables reopen (including Obsidian leaf state). Added **Max tabs to restore** (default 5) and **Clear saved session**.
