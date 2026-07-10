@@ -100,5 +100,18 @@ If listed in the community store, ensure `community-plugins.json` has:
 
 ```json
 "author": "pranavshantagiri",
-"repo": "pranavshantagiri/Obsidian_browser_plugin"
+"repo": "pranavshantagiri/obsidian-browser-plugin"
 ```
+
+---
+
+## 1.1.1
+
+Hotfix for blank pages, stuck loading UI, history layout, images, and session restore memory after 1.1.0.
+
+### Fixes
+- **Blank page:** Webview loads even when the pane briefly reports zero size; pending URLs flush on attach/`dom-ready` with a short fallback timer.
+- **Stuck spinner:** Failed loads and blocked external URLs clear loading state; tab spinner no longer overlaps the globe/favicon.
+- **Local paths & images:** Multi-part domains (`google.com.in`) open as HTTPS; PNG/JPEG/GIF/WebP and other images open from disk/file picker.
+- **History:** Entries grouped by Today / Yesterday / date with sticky section headers.
+- **Session restore:** “Restore session on startup” fully disables reopen (including Obsidian leaf state). Added **Max tabs to restore** (default 5) and **Clear saved session**.

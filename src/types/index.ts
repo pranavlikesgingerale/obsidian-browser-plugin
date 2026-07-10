@@ -37,6 +37,8 @@ export interface BrowserPluginSettings {
 	pageNotesFolder: string;
 	/** Restore open tabs when reopening the browser after Obsidian restarts. */
 	restoreSessionOnStartup: boolean;
+	/** Cap how many tabs are restored (avoids memory blowups after crash/sleep). */
+	maxRestoredTabs: number;
 }
 
 export const DEFAULT_SETTINGS: BrowserPluginSettings = {
@@ -57,6 +59,7 @@ export const DEFAULT_SETTINGS: BrowserPluginSettings = {
 	openVaultHtmlAsPage: true,
 	pageNotesFolder: "Browser Pages",
 	restoreSessionOnStartup: true,
+	maxRestoredTabs: 5,
 };
 
 /** Runtime environment detected at plugin load. */
@@ -164,6 +167,13 @@ export const SUPPORTED_EXTENSIONS = [
 	".txt",
 	".md",
 	".markdown",
+	".png",
+	".jpg",
+	".jpeg",
+	".gif",
+	".webp",
+	".bmp",
+	".ico",
 ] as const;
 
 export type SupportedExtension = (typeof SUPPORTED_EXTENSIONS)[number];

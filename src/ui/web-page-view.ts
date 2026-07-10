@@ -228,7 +228,8 @@ export class WebPageView extends ItemView {
 		if (!this.pendingLoad || !this.browserManager || !this.contentEl_) return;
 
 		const height = this.contentEl_.clientHeight;
-		if (height <= 0 && attempt < 40) {
+		const width = this.contentEl_.clientWidth;
+		if ((height <= 0 || width <= 0) && attempt < 30) {
 			window.requestAnimationFrame(() => this.tryFlushLoad(attempt + 1));
 			return;
 		}
@@ -237,6 +238,8 @@ export class WebPageView extends ItemView {
 		const { url, title } = this.pendingLoad;
 		this.pendingLoad = null;
 		this.applyLoad(url, title);
+		window.setTimeout(() => this.browserManager?.syncLayout(), 50);
+		window.setTimeout(() => this.browserManager?.syncLayout(), 250);
 	}
 
 	private applyLoad(url: string, title?: string): void {

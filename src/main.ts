@@ -65,6 +65,7 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 
 		this.app.workspace.onLayoutReady(() => {
 			if (!this.settings.restoreSessionOnStartup) return;
+
 			const session = this.getBrowserSession();
 			if (session && session.tabs.length > 0) {
 				if (this.app.workspace.getLeavesOfType(BROWSER_VIEW_TYPE).length === 0) {
@@ -188,7 +189,10 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 	}
 
 	private async restoreOpenPages(): Promise<void> {
-		if (this.openPages.length === 0) return;
+		if (!this.settings.restoreSessionOnStartup || this.openPages.length === 0) return;
+
+		const maxTabs = Math.max(1, this.settings.maxRestoredTabs || 5);
+		const pages = this.openPages.slice(0, maxTabs);
 
 		const openUrls = new Set(
 			this.app.workspace
@@ -197,7 +201,7 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 				.filter((url): url is string => Boolean(url)),
 		);
 
-		for (const page of this.openPages) {
+		for (const page of pages) {
 			if (openUrls.has(page.url)) continue;
 			await this.openWebPage(page.url, page.title, page.sourcePath, false);
 		}
@@ -205,6 +209,19 @@ export default class LocalHtmlBrowserPlugin extends Plugin {
 
 	getBrowserSession(): BrowserSessionSnapshot | null {
 		return this.browserSession;
+	}
+
+	/** Drop persisted tabs/pages so the next launch does not restore them. */
+	async clearSavedSession(): Promise<void> {
+		this.browserSession = null;
+		this.openPages = [];
+		const data = await readPluginData(this);
+		data.session = undefined;
+		data.openPages = [];
+		data.history = this.historyManager.serialize();
+		data.bookmarks = this.bookmarkManager.serialize();
+		data.settings = this.settings;
+		await this.saveData(data);
 	}
 
 	async activateBrowserView(): Promise<BrowserView | null> {

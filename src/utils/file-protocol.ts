@@ -14,6 +14,7 @@ export function readLocalFile(filePath: string): { content: string; mimeType: st
 	try {
 		const ext = pathMod.extname(filePath).toLowerCase();
 		const url = pathToFileUrl(filePath);
+		const mimeType = mimeForExtension(ext);
 
 		if (ext === ".md" || ext === ".markdown") {
 			const md = fs.readFileSync(filePath, "utf-8");
@@ -21,8 +22,12 @@ export function readLocalFile(filePath: string): { content: string; mimeType: st
 			return { content: html, mimeType: "text/html", url };
 		}
 
+		// Binary images: webview loads via file:// — don't corrupt with utf-8 reads.
+		if (mimeType.startsWith("image/") && ext !== ".svg") {
+			return { content: "", mimeType, url };
+		}
+
 		const content = fs.readFileSync(filePath, "utf-8");
-		const mimeType = mimeForExtension(ext);
 		return { content, mimeType, url };
 	} catch {
 		return null;
@@ -126,6 +131,13 @@ function mimeForExtension(ext: string): string {
 		".svg": "image/svg+xml",
 		".xml": "application/xml",
 		".txt": "text/plain",
+		".png": "image/png",
+		".jpg": "image/jpeg",
+		".jpeg": "image/jpeg",
+		".gif": "image/gif",
+		".webp": "image/webp",
+		".bmp": "image/bmp",
+		".ico": "image/x-icon",
 	};
 	return map[ext] ?? "text/plain";
 }

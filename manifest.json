@@ -1,7 +1,7 @@
 {
 	"id": "local-html-browser",
 	"name": "Local HTML Browser",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"minAppVersion": "1.12.7",
 	"description": "Run local file:// HTML apps with full browser behavior — SPAs, hash routes, and live page tabs.",
 	"author": "pranavshantagiri",

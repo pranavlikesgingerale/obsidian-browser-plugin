@@ -86,11 +86,23 @@ export class WebviewEngine {
 
 		if (this.settings.blockExternalInternet && /^https?:\/\//i.test(url)) {
 			this.events.onError("External internet access is blocked by settings.");
+			this.events.onLoadingStateChange(false);
+			this.events.onLoadStop();
 			return;
 		}
 
+		// Always keep the latest requested URL; flush once the guest is attached.
 		if (!this.isAttached) {
 			this.pendingSrc = url;
+			this.events.onLoadingStateChange(true);
+			// Some Electron builds never fire did-attach; retry briefly then force-load.
+			window.setTimeout(() => {
+				if (!this.webview || this.pendingSrc !== url) return;
+				if (!this.isAttached) {
+					this.isAttached = true;
+					this.flushPendingSrc();
+				}
+			}, 500);
 			return;
 		}
 
@@ -137,10 +149,15 @@ export class WebviewEngine {
 	private syncWebviewSize(): void {
 		if (!this.webview || !this.container) return;
 		const rect = this.container.getBoundingClientRect();
-		if (rect.width <= 0 || rect.height <= 0) return;
+		let width = Math.floor(rect.width);
+		let height = Math.floor(rect.height);
 
-		const width = Math.max(Math.floor(rect.width), 200);
-		const height = Math.max(Math.floor(rect.height), 200);
+		if (width <= 0) width = this.container.clientWidth;
+		if (height <= 0) height = this.container.clientHeight;
+
+		width = Math.max(width, 200);
+		height = Math.max(height, 200);
+
 		setElementCssProps(this.webview, {
 			width: `${width}px`,
 			height: `${height}px`,
@@ -264,6 +281,7 @@ export class WebviewEngine {
 		add("dom-ready", () => {
 			this.isAttached = true;
 			this.syncWebviewSize();
+			this.flushPendingSrc();
 		});
 
 		add("did-start-loading", () => {
@@ -331,10 +349,15 @@ export class WebviewEngine {
 
 		add("did-fail-load", (e: Event) => {
 			const errorCode = getWebviewEventNumber(e, "errorCode");
+			// -3 = ERR_ABORTED (navigation superseded) — ignore
 			if (errorCode === -3) return;
+			this.hasStartedLoad = true;
+			this.clearStuckTimer();
 			const validatedURL = getWebviewEventString(e, "validatedURL") ?? "page";
 			const errorDescription = getWebviewEventString(e, "errorDescription") ?? "unknown error";
 			this.events.onError(`Failed to load ${validatedURL}: ${errorDescription}`);
+			this.events.onLoadingStateChange(false);
+			this.events.onLoadStop();
 		});
 	}
 

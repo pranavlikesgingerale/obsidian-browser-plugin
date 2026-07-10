@@ -11,7 +11,7 @@ import { HistoryPanel } from "./history-panel";
 import { DevToolsManager } from "../devtools/devtools-manager";
 import { FileWatcher } from "../utils/file-watcher";
 import { openFileDialog, openFolderDialog } from "./download-manager";
-import { pathToFileUrl } from "../utils/paths";
+import { normalizeInputToUrl, pathToFileUrl } from "../utils/paths";
 import { getViewContentContainer } from "../utils/dom";
 
 /**
@@ -201,18 +201,20 @@ export class BrowserView extends ItemView {
 
 	/** Navigate to URL in active tab. */
 	navigateTo(url: string): void {
-		if (!url) return;
-		this.toolbar?.setUrl(url);
+		const normalized = normalizeInputToUrl(url);
+		if (!normalized) return;
+
+		this.toolbar?.setUrl(normalized);
 		const tab = this.tabManager.getActiveTab();
-		if (tab && isPersistableBrowserUrl(url)) {
-			this.tabManager.updateTab(tab.id, { url, isLoading: true });
+		if (tab && isPersistableBrowserUrl(normalized)) {
+			this.tabManager.updateTab(tab.id, { url: normalized, isLoading: true });
 		} else if (tab) {
 			this.tabManager.updateTab(tab.id, { isLoading: true });
 		}
-		this.scheduleEngineLoad(url, true);
+		this.scheduleEngineLoad(normalized, true);
 
-		if (this.plugin.settings.watchFileChanges && isPersistableBrowserUrl(url)) {
-			this.fileWatcher.watch(url);
+		if (this.plugin.settings.watchFileChanges && isPersistableBrowserUrl(normalized)) {
+			this.fileWatcher.watch(normalized);
 		}
 	}
 
@@ -271,7 +273,18 @@ export class BrowserView extends ItemView {
 	private restoreInitialSession(): boolean {
 		const state = this.pickRestoreState();
 		if (!state || state.tabs.length === 0) return false;
-		if (!this.tabManager.restoreSession(state.tabs, state.activeTabIndex)) return false;
+
+		const maxTabs = Math.max(1, this.plugin.settings.maxRestoredTabs || 5);
+		const capped =
+			state.tabs.length > maxTabs
+				? {
+						...state,
+						tabs: state.tabs.slice(0, maxTabs),
+						activeTabIndex: Math.min(state.activeTabIndex, maxTabs - 1),
+					}
+				: state;
+
+		if (!this.tabManager.restoreSession(capped.tabs, capped.activeTabIndex)) return false;
 
 		const activeTab = this.tabManager.getActiveTab();
 		if (activeTab?.url && isPersistableBrowserUrl(activeTab.url)) {
@@ -283,17 +296,24 @@ export class BrowserView extends ItemView {
 	}
 
 	private pickRestoreState(): BrowserViewState | null {
+		// When restore is off, ignore leaf/plugin session so Obsidian reopen does not
+		// reload every previous tab (memory / blank-load storms).
+		if (!this.plugin.settings.restoreSessionOnStartup) {
+			this.pendingState = null;
+			return null;
+		}
+
 		if (this.pendingState) {
 			const state = this.pendingState;
 			this.pendingState = null;
 			return state;
 		}
-		if (this.plugin.settings.restoreSessionOnStartup) {
-			const pluginSession = this.plugin.getBrowserSession();
-			if (pluginSession && pluginSession.tabs.length > 0) {
-				return pluginSession;
-			}
+
+		const pluginSession = this.plugin.getBrowserSession();
+		if (pluginSession && pluginSession.tabs.length > 0) {
+			return pluginSession;
 		}
+
 		return parseBrowserViewState(this.leaf.getViewState().state);
 	}
 
@@ -306,7 +326,9 @@ export class BrowserView extends ItemView {
 		if (!this.pendingLoad || !this.browserManager || !this.webviewContainer) return;
 
 		const height = this.webviewContainer.clientHeight;
-		if (height <= 0 && attempt < 40) {
+		const width = this.webviewContainer.clientWidth;
+		// Wait briefly for layout, then load anyway — zero-size panes caused blank pages.
+		if ((height <= 0 || width <= 0) && attempt < 30) {
 			window.requestAnimationFrame(() => this.tryFlushLoad(attempt + 1));
 			return;
 		}
@@ -317,6 +339,8 @@ export class BrowserView extends ItemView {
 		this.suppressHistory = !recordHistory;
 		this.browserManager.loadUrl(url);
 		window.requestAnimationFrame(() => this.browserManager?.syncLayout());
+		window.setTimeout(() => this.browserManager?.syncLayout(), 50);
+		window.setTimeout(() => this.browserManager?.syncLayout(), 250);
 	}
 
 	private snapshotActiveTabFromEngine(): void {
@@ -604,6 +628,8 @@ export class BrowserView extends ItemView {
 
 	private handleLoadingChange(loading: boolean): void {
 		this.toolbar?.setLoading(loading);
+		const tab = this.tabManager.getActiveTab();
+		if (tab) this.tabManager.updateTab(tab.id, { isLoading: loading });
 	}
 
 	private loadWelcomePage(): void {

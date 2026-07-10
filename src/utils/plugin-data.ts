@@ -33,6 +33,11 @@ export function parseBrowserSettings(value: unknown): Partial<BrowserPluginSetti
 	if (downloadDirectory !== undefined) settings.downloadDirectory = downloadDirectory;
 	if (pageNotesFolder !== undefined) settings.pageNotesFolder = pageNotesFolder;
 
+	const maxRestoredTabs = value.maxRestoredTabs;
+	if (typeof maxRestoredTabs === "number" && Number.isFinite(maxRestoredTabs) && maxRestoredTabs > 0) {
+		settings.maxRestoredTabs = Math.min(50, Math.floor(maxRestoredTabs));
+	}
+
 	const booleanKeys = [
 		"enableJavaScript",
 		"allowLocalFileAccess",

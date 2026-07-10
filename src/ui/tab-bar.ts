@@ -20,6 +20,7 @@ interface TabElementParts {
 	titleEl: HTMLElement;
 	faviconImg: HTMLImageElement | null;
 	iconEl: HTMLElement | null;
+	spinnerEl: HTMLElement;
 	closeBtn: HTMLButtonElement;
 }
 
@@ -149,6 +150,8 @@ export class TabBar {
 			setIcon(iconEl, "globe");
 		}
 
+		const spinnerEl = root.createSpan({ cls: "local-html-browser-tab-spinner" });
+
 		const titleEl = root.createSpan({ cls: "local-html-browser-tab-title", text: getTabDisplayTitle(tab) });
 
 		const closeBtn = root.createEl("button", {
@@ -231,7 +234,7 @@ export class TabBar {
 			this.syncDropIndicators();
 		});
 
-		return { root, titleEl, faviconImg, iconEl, closeBtn };
+		return { root, titleEl, faviconImg, iconEl, spinnerEl, closeBtn };
 	}
 
 	private updateTabElement(parts: TabElementParts, tab: BrowserTab, isActive: boolean): void {
@@ -252,7 +255,7 @@ export class TabBar {
 					cls: "local-html-browser-tab-favicon",
 					attr: { src: tab.favicon },
 				});
-				parts.root.insertBefore(parts.faviconImg, parts.titleEl);
+				parts.root.insertBefore(parts.faviconImg, parts.spinnerEl);
 			} else if (parts.faviconImg.src !== tab.favicon) {
 				parts.faviconImg.src = tab.favicon;
 			}
@@ -261,7 +264,7 @@ export class TabBar {
 			parts.faviconImg = null;
 			parts.iconEl = parts.root.createSpan({ cls: "local-html-browser-tab-icon" });
 			setIcon(parts.iconEl, "globe");
-			parts.root.insertBefore(parts.iconEl, parts.titleEl);
+			parts.root.insertBefore(parts.iconEl, parts.spinnerEl);
 		}
 	}
 

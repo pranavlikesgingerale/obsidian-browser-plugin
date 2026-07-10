@@ -1,6 +1,6 @@
 {
 	"name": "local-html-browser",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"description": "Run local file:// HTML apps inside the editor with full browser behavior.",
 	"main": "main.js",
 	"scripts": {

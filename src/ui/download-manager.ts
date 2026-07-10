@@ -30,8 +30,22 @@ export async function openFileDialog(extensions?: string[]): Promise<string | nu
 				filters: [
 					{
 						name: "Web Files",
-						extensions: extensions ?? ["html", "htm", "svg", "xml", "txt", "md"],
+						extensions:
+							extensions ?? [
+								"html",
+								"htm",
+								"svg",
+								"xml",
+								"txt",
+								"md",
+								"png",
+								"jpg",
+								"jpeg",
+								"gif",
+								"webp",
+							],
 					},
+					{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "svg"] },
 					{ name: "All Files", extensions: ["*"] },
 				],
 			});
@@ -46,7 +60,8 @@ export async function openFileDialog(extensions?: string[]): Promise<string | nu
 	return new Promise((resolve) => {
 		const input = createElement("input") as HTMLInputElement;
 		input.type = "file";
-		input.accept = ".html,.htm,.svg,.xml,.txt,.md,.markdown";
+		input.accept =
+			".html,.htm,.svg,.xml,.txt,.md,.markdown,.png,.jpg,.jpeg,.gif,.webp,.bmp,.ico";
 		input.onchange = () => {
 			const file = input.files?.[0];
 			resolve(file ? getElectronFilePath(file) : null);

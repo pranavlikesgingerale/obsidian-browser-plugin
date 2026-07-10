@@ -100,9 +100,31 @@ export class BrowserSettingTab extends PluginSettingTab {
 		this.addToggleSetting(
 			containerEl,
 			"Restore session on startup",
-			"Reopen your last browser tabs when you launch Obsidian or open the browser",
+			"Reopen your last browser tabs when you launch Obsidian or open the browser. Turn off if reopen uses too much memory.",
 			"restoreSessionOnStartup",
 		);
+		new Setting(containerEl)
+			.setName("Max tabs to restore")
+			.setDesc("Limits how many tabs reopen after a restart (1–50). Helps when many sites were left open.")
+			.addText((text) => {
+				text.setValue(String(this.plugin.settings.maxRestoredTabs ?? 5));
+				text.setPlaceholder("5");
+				text.onChange(async (value) => {
+					const parsed = Number.parseInt(value, 10);
+					if (!Number.isFinite(parsed) || parsed < 1) return;
+					this.plugin.settings.maxRestoredTabs = Math.min(50, parsed);
+					await this.plugin.saveSettings();
+				});
+			});
+		new Setting(containerEl)
+			.setName("Clear saved session")
+			.setDesc("Forget saved browser tabs and standalone page tabs so the next launch starts fresh.")
+			.addButton((btn) =>
+				btn.setButtonText("Clear session").setWarning().onClick(async () => {
+					await this.plugin.clearSavedSession();
+					new Notice("Saved browser session cleared");
+				}),
+			);
 
 		new Setting(containerEl).setName("Security").setHeading();
 		this.addToggleSetting(containerEl, "Enable JavaScript", "Allow JavaScript execution in the browser. Required for interactive pages.", "enableJavaScript");
@@ -161,9 +183,37 @@ export class BrowserSettingTab extends PluginSettingTab {
 			),
 			toggleSetting(
 				"Restore session on startup",
-				"Reopen your last browser tabs when you launch Obsidian or open the browser",
+				"Reopen your last browser tabs when you launch Obsidian or open the browser. Turn off if reopen uses too much memory.",
 				"restoreSessionOnStartup",
 			),
+			{
+				name: "Max tabs to restore",
+				desc: "Limits how many tabs reopen after a restart (1–50). Helps when many sites were left open.",
+				render: (setting) => {
+					setting.addText((text) => {
+						text.setValue(String(this.plugin.settings.maxRestoredTabs ?? 5));
+						text.setPlaceholder("5");
+						text.onChange(async (value) => {
+							const parsed = Number.parseInt(value, 10);
+							if (!Number.isFinite(parsed) || parsed < 1) return;
+							this.plugin.settings.maxRestoredTabs = Math.min(50, parsed);
+							await this.plugin.saveSettings();
+						});
+					});
+				},
+			},
+			{
+				name: "Clear saved session",
+				desc: "Forget saved browser tabs and standalone page tabs so the next launch starts fresh.",
+				render: (setting) => {
+					setting.addButton((btn) =>
+						btn.setButtonText("Clear session").setWarning().onClick(async () => {
+							await this.plugin.clearSavedSession();
+							new Notice("Saved browser session cleared");
+						}),
+					);
+				},
+			},
 			settingsGroup("Security", [
 				toggleSetting(
 					"Enable JavaScript",

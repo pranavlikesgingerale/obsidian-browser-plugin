@@ -7,7 +7,12 @@ export interface HistoryPanelCallbacks {
 	onClearAll: () => void;
 }
 
-/** Slide-down panel listing navigation history. */
+interface HistoryGroup {
+	label: string;
+	entries: HistoryEntry[];
+}
+
+/** Slide-down panel listing navigation history, grouped by day. */
 export class HistoryPanel {
 	readonly el: HTMLElement;
 	private listEl: HTMLElement;
@@ -67,6 +72,7 @@ export class HistoryPanel {
 		this.visible = true;
 		this.el.addClass("is-visible");
 		this.render();
+		window.requestAnimationFrame(() => this.searchInput.focus());
 	}
 
 	hide(): void {
@@ -92,34 +98,85 @@ export class HistoryPanel {
 			return;
 		}
 
-		for (const entry of entries) {
-			const row = this.listEl.createDiv({ cls: "local-html-browser-history-item" });
-
-			const main = row.createDiv({ cls: "local-html-browser-history-item-main" });
-			main.createDiv({ cls: "local-html-browser-history-item-title", text: entry.title || entry.url });
-			main.createDiv({ cls: "local-html-browser-history-item-url", text: entry.url });
-			main.createDiv({
-				cls: "local-html-browser-history-item-time",
-				text: formatHistoryTime(entry.visitedAt),
+		for (const group of groupHistoryByDay(entries)) {
+			const section = this.listEl.createDiv({ cls: "local-html-browser-history-group" });
+			section.createDiv({
+				cls: "local-html-browser-history-group-label",
+				text: group.label,
 			});
 
-			main.addEventListener("click", () => {
-				this.callbacks.onOpenEntry(entry.url);
-				this.hide();
-			});
+			for (const entry of group.entries) {
+				const row = section.createDiv({ cls: "local-html-browser-history-item" });
 
-			const deleteBtn = row.createEl("button", {
-				cls: "local-html-browser-btn local-html-browser-history-delete",
-				attr: { title: "Remove from history" },
-			});
-			setIcon(deleteBtn, "x");
-			deleteBtn.addEventListener("click", (event) => {
-				event.stopPropagation();
-				this.callbacks.onDeleteEntry(entry.id);
-				this.render();
-			});
+				const main = row.createDiv({ cls: "local-html-browser-history-item-main" });
+				main.createDiv({
+					cls: "local-html-browser-history-item-title",
+					text: entry.title || entry.url,
+				});
+				main.createDiv({ cls: "local-html-browser-history-item-url", text: entry.url });
+				main.createDiv({
+					cls: "local-html-browser-history-item-time",
+					text: formatHistoryTime(entry.visitedAt),
+				});
+
+				main.addEventListener("click", () => {
+					this.callbacks.onOpenEntry(entry.url);
+					this.hide();
+				});
+
+				const deleteBtn = row.createEl("button", {
+					cls: "local-html-browser-btn local-html-browser-history-delete",
+					attr: { title: "Remove from history" },
+				});
+				setIcon(deleteBtn, "x");
+				deleteBtn.addEventListener("click", (event) => {
+					event.stopPropagation();
+					this.callbacks.onDeleteEntry(entry.id);
+					this.render();
+				});
+			}
 		}
 	}
+}
+
+function groupHistoryByDay(entries: HistoryEntry[]): HistoryGroup[] {
+	const groups: HistoryGroup[] = [];
+	const byKey = new Map<string, HistoryGroup>();
+
+	for (const entry of entries) {
+		const key = dayKey(entry.visitedAt);
+		let group = byKey.get(key);
+		if (!group) {
+			group = { label: dayLabel(entry.visitedAt), entries: [] };
+			byKey.set(key, group);
+			groups.push(group);
+		}
+		group.entries.push(entry);
+	}
+
+	return groups;
+}
+
+function dayKey(timestamp: number): string {
+	const date = new Date(timestamp);
+	return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+function dayLabel(timestamp: number): string {
+	const date = new Date(timestamp);
+	const now = new Date();
+	const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+	const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+	const dayMs = 24 * 60 * 60 * 1000;
+
+	if (startOfDay === startOfToday) return "Today";
+	if (startOfDay === startOfToday - dayMs) return "Yesterday";
+	return date.toLocaleDateString(undefined, {
+		weekday: "short",
+		month: "short",
+		day: "numeric",
+		year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
+	});
 }
 
 function formatHistoryTime(timestamp: number): string {
@@ -128,10 +185,5 @@ function formatHistoryTime(timestamp: number): string {
 	if (date.toDateString() === now.toDateString()) {
 		return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 	}
-	return date.toLocaleString(undefined, {
-		month: "short",
-		day: "numeric",
-		hour: "numeric",
-		minute: "2-digit",
-	});
+	return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }

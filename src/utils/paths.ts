@@ -92,8 +92,34 @@ export function normalizeInputToUrl(input: string): string {
 		return trimmed;
 	}
 
+	// Windows/UNC paths
+	if (/^[a-zA-Z]:[\\/]/.test(trimmed) || trimmed.startsWith("\\\\")) {
+		return pathToFileUrl(trimmed);
+	}
+
+	// Domain-like input: google.com, google.com.in, www.example.com/path
+	if (looksLikeWebHost(trimmed)) {
+		return `https://${trimmed}`;
+	}
+
 	// Treat as filesystem path
 	return pathToFileUrl(trimmed);
+}
+
+/** Heuristic: hostname vs local file like index.html / photo.png. */
+function looksLikeWebHost(input: string): boolean {
+	if (input.includes("\\") || input.includes(" ") || input.startsWith(".")) return false;
+	if (/^[a-zA-Z]:/.test(input)) return false;
+
+	const hostPart = input.split(/[/?#]/)[0];
+	if (!hostPart.includes(".")) return false;
+
+	// Single-dot file names (index.html, logo.png) are local files, not hosts.
+	if (isSupportedFile(hostPart) && hostPart.split(".").length === 2) {
+		return false;
+	}
+
+	return /^(?:[\w-]+\.)+[a-zA-Z]{2,}$/.test(hostPart) || /^www\./i.test(hostPart);
 }
 
 /** Get directory listing HTML for a local folder (simple index). */
