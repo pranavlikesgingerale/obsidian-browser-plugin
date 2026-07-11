@@ -3,7 +3,7 @@
 	"name": "Local HTML Browser",
 	"version": "1.2.0",
 	"minAppVersion": "1.12.7",
-	"description": "A browser pane inside Obsidian for local HTML files, with tabs, history, and optional web URLs.",
+	"description": "A browser pane for local HTML files, with tabs, history, and optional web URLs.",
 	"author": "pranavshantagiri",
 	"authorUrl": "https://github.com/pranavshantagiri",
 	"isDesktopOnly": true
